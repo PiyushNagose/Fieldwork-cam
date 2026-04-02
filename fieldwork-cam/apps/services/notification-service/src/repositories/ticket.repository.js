@@ -2,6 +2,8 @@ const Ticket = require("../models/Ticket.model");
 
 const createTicket = (payload) => Ticket.create(payload);
 
+const findLatestTicket = () => Ticket.findOne().sort({ createdAt: -1 });
+
 const findTicketsByVendor = (vendorAuthUserId, status) => {
   const filter = { vendorAuthUserId };
 
@@ -26,4 +28,5 @@ module.exports = {
   createTicket,
   findTicketsByVendor,
   findAllTickets,
+  findLatestTicket,
 };

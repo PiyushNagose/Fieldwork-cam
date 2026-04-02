@@ -10,8 +10,54 @@ const {
 const { createAndStoreOtp, verifyOtpCode } = require("./otp.service");
 const { generateToken } = require("./jwt.service");
 const { publishEvent } = require("./publisher.service");
+const { buildInviteLink, sendInviteEmail } = require("./email.service");
 const { ROUTING_KEYS } = require("shared-events");
 const ApiError = require("../utils/apiError");
+
+const buildAuthResponse = (user, token) => ({
+  token,
+  user: {
+    id: user._id,
+    authUserId: user._id,
+    phone: user.phone,
+    email: user.email || "",
+    role: user.role,
+  },
+});
+
+const buildPendingInviteResponse = async ({
+  user,
+  inviteBaseUrl,
+  fullName,
+  companyName,
+}) => {
+  const inviteLink = buildInviteLink({
+    inviteToken: user.inviteToken,
+    inviteBaseUrl,
+  });
+
+  let emailDelivery = {
+    sent: false,
+    skipped: true,
+    reason: "No email available",
+  };
+
+  if (user.email) {
+    emailDelivery = await sendInviteEmail({
+      to: user.email,
+      recipientName: fullName,
+      companyName,
+      inviteLink,
+    });
+  }
+
+  return {
+    authUser: user,
+    inviteToken: user.inviteToken,
+    inviteLink,
+    emailDelivery,
+  };
+};
 
 const login = async (phone) => {
   const otpDoc = await createAndStoreOtp(phone, "REGISTER");
@@ -50,15 +96,7 @@ const loginWithPhone = async ({ phone, password }) => {
     role: user.role,
   });
 
-  return {
-    token,
-    user: {
-      id: user._id,
-      phone: user.phone,
-      email: user.email || "",
-      role: user.role,
-    },
-  };
+  return buildAuthResponse(user, token);
 };
 
 const loginWithEmail = async ({ email, password }) => {
@@ -89,15 +127,7 @@ const loginWithEmail = async ({ email, password }) => {
     role: user.role,
   });
 
-  return {
-    token,
-    user: {
-      id: user._id,
-      phone: user.phone,
-      email: user.email || "",
-      role: user.role,
-    },
-  };
+  return buildAuthResponse(user, token);
 };
 
 const verifyOtp = async ({ phone, otp, password, role = "VENDOR_OWNER" }) => {
@@ -140,42 +170,47 @@ const verifyOtp = async ({ phone, otp, password, role = "VENDOR_OWNER" }) => {
     timestamp: new Date().toISOString(),
   });
 
-  return {
-    token,
-    user: {
-      id: user._id,
-      phone: user.phone,
-      email: user.email || "",
-      role: user.role,
-    },
-  };
+  return buildAuthResponse(user, token);
 };
 
-const inviteUser = async ({ phone, email, role }) => {
+const inviteUser = async ({
+  phone,
+  email,
+  role,
+  inviteBaseUrl,
+  fullName,
+  companyName,
+}) => {
   const existingByPhone = await findByPhone(phone);
 
   if (existingByPhone) {
-    // 🔥 CASE 1: Already invited but not accepted
     if (!existingByPhone.inviteAccepted) {
-      return {
-        authUser: existingByPhone,
-        inviteToken: existingByPhone.inviteToken,
-        inviteLink: `/accept-invite?token=${existingByPhone.inviteToken}`,
-      };
+      const pendingUser =
+        email && existingByPhone.email !== email
+          ? await updateAuthUser(existingByPhone._id, { email })
+          : existingByPhone;
+
+      return buildPendingInviteResponse({
+        user: pendingUser,
+        inviteBaseUrl,
+        fullName,
+        companyName,
+      });
     }
 
-    // 🔥 CASE 2: Already active user
     throw new ApiError("User already registered and active", 400);
   }
+
   if (email) {
     const existingByEmail = await findByEmail(email);
 
     if (existingByEmail && !existingByEmail.inviteAccepted) {
-      return {
-        authUser: existingByEmail,
-        inviteToken: existingByEmail.inviteToken,
-        inviteLink: `/accept-invite?token=${existingByEmail.inviteToken}`,
-      };
+      return buildPendingInviteResponse({
+        user: existingByEmail,
+        inviteBaseUrl,
+        fullName,
+        companyName,
+      });
     }
 
     if (existingByEmail) {
@@ -199,11 +234,12 @@ const inviteUser = async ({ phone, email, role }) => {
     status: "INVITED",
   });
 
-  return {
-    authUser: user,
-    inviteToken,
-    inviteLink: `/accept-invite?token=${inviteToken}`,
-  };
+  return buildPendingInviteResponse({
+    user,
+    inviteBaseUrl,
+    fullName,
+    companyName,
+  });
 };
 
 const acceptInvite = async ({ token, password }) => {
@@ -247,15 +283,7 @@ const acceptInvite = async ({ token, password }) => {
     timestamp: new Date().toISOString(),
   });
 
-  return {
-    token: authToken,
-    user: {
-      id: updatedUser._id,
-      phone: updatedUser.phone,
-      email: updatedUser.email || "",
-      role: updatedUser.role,
-    },
-  };
+  return buildAuthResponse(updatedUser, authToken);
 };
 
 module.exports = {

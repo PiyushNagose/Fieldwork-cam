@@ -54,6 +54,22 @@ router.patch(
   }),
 );
 
+router.delete(
+  "/clear-all",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "delete",
+      url: `${SERVICES.NOTIFICATION}/notifications/clear-all`,
+      headers: {
+        authorization: req.headers.authorization,
+      },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
 router.get(
   "/unread-count",
   authMiddleware,

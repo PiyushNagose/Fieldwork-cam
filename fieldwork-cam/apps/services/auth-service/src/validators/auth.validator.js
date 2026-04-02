@@ -27,6 +27,15 @@ const verifyOtpValidator = [
 const inviteUserValidator = [
   body("phone").notEmpty().withMessage("Phone is required"),
   body("email").optional().isEmail().withMessage("Valid email is required"),
+  body("fullName").optional().isString().withMessage("Full name must be string"),
+  body("companyName")
+    .optional()
+    .isString()
+    .withMessage("Company name must be string"),
+  body("inviteBaseUrl")
+    .optional()
+    .isString()
+    .withMessage("Invite base url must be string"),
   body("role")
     .notEmpty()
     .isIn(["VENDOR_OWNER", "STAFF"])

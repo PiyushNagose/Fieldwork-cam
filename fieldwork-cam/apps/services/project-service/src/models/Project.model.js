@@ -29,6 +29,30 @@ const projectAssignmentSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const projectChecklistSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    required: {
+      type: Boolean,
+      default: false,
+    },
+    captureType: {
+      type: String,
+      default: "STANDARD",
+      trim: true,
+    },
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { _id: false },
+);
+
 const projectSchema = new mongoose.Schema(
   {
     workOrderNumber: {
@@ -109,7 +133,15 @@ const projectSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    checklist: {
+      type: [projectChecklistSchema],
+      default: [],
+    },
     attchments: {
+      type: [String],
+      default: [],
+    },
+    attachments: {
       type: [String],
       default: [],
     },

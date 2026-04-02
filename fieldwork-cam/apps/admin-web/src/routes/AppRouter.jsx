@@ -27,6 +27,9 @@ import VendorProjectsPage from "../pages/vendor/VendorProjectsPage";
 import VendorProjectDetailsScreen from "../pages/vendor/VendorProjectDetailsPage";
 import StaffPage from "../pages/vendor/StaffPage";
 import VendorProfilePage from "../pages/vendor/VendorProfilePage";
+import VendorSupportPage from "../pages/vendor/VendorSupportPage";
+import VendorEarningsPage from "../pages/vendor/VendorEarningsPage";
+import VendorPerformancePage from "../pages/vendor/VendorPerformancePage";
 
 function PlaceholderPage({ title }) {
   return (
@@ -83,16 +86,15 @@ export default function AppRouter() {
               />
               <Route
                 path="earnings"
-                element={<PlaceholderPage title="Earnings" />}
+                element={<VendorEarningsPage />}
               />
-              <Route path="staff" element={<PlaceholderPage title="Staff" />} />
               <Route
                 path="performance"
-                element={<PlaceholderPage title="Performance" />}
+                element={<VendorPerformancePage />}
               />
               <Route
                 path="support"
-                element={<PlaceholderPage title="Support" />}
+                element={<VendorSupportPage />}
               />
               <Route path="profile" element={<VendorProfilePage />} />
             </Route>

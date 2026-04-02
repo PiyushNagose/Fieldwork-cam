@@ -8,24 +8,24 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  GroupsOutlined,
   CheckCircleOutlineOutlined,
+  GroupsOutlined,
   ScheduleOutlined,
   VerifiedOutlined,
 } from "@mui/icons-material";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
   ArcElement,
-  Tooltip,
-  Legend,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
   Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip,
 } from "chart.js";
-import { Line, Bar, Doughnut } from "react-chartjs-2";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { getProjectsApi } from "../../api/project.api";
 import { getVendorsApi } from "../../api/vendor.api";
 import { getInvoicesApi } from "../../api/invoice.api";
@@ -50,7 +50,6 @@ export default function AnalyticsPage() {
   const [vendors, setVendors] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [services, setServices] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -72,18 +71,10 @@ export default function AnalyticsPage() {
           ? result.value?.data || result.value || []
           : [];
 
-      setProjects(
-        Array.isArray(safeData(projectsRes)) ? safeData(projectsRes) : [],
-      );
-      setVendors(
-        Array.isArray(safeData(vendorsRes)) ? safeData(vendorsRes) : [],
-      );
-      setInvoices(
-        Array.isArray(safeData(invoicesRes)) ? safeData(invoicesRes) : [],
-      );
-      setServices(
-        Array.isArray(safeData(servicesRes)) ? safeData(servicesRes) : [],
-      );
+      setProjects(Array.isArray(safeData(projectsRes)) ? safeData(projectsRes) : []);
+      setVendors(Array.isArray(safeData(vendorsRes)) ? safeData(vendorsRes) : []);
+      setInvoices(Array.isArray(safeData(invoicesRes)) ? safeData(invoicesRes) : []);
+      setServices(Array.isArray(safeData(servicesRes)) ? safeData(servicesRes) : []);
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -101,86 +92,77 @@ export default function AnalyticsPage() {
 
   const analytics = useMemo(() => {
     const monthKeys = getRecentMonthKeys(MONTHS_TO_SHOW);
-
     const totalVendors = vendors.length;
     const activeVendors = vendors.filter(
-      (v) => (v.status || "").toUpperCase() === "ACTIVE",
+      (vendor) => (vendor.status || "").toUpperCase() === "ACTIVE",
     ).length;
-
-    const completedProjects = projects.filter((p) =>
-      ["Completed", "Approved"].includes(p.status),
+    const completedProjects = projects.filter((project) =>
+      ["Completed", "Approved"].includes(project.status),
     );
-
-    const submittedProjects = projects.filter((p) =>
-      ["Submitted", "Approved", "Completed"].includes(p.status),
-    );
-
-    const avgCompletionTimeDays =
-      calculateAverageCompletionDays(completedProjects);
+    const avgCompletionTimeDays = calculateAverageCompletionDays(completedProjects);
     const avgApprovalScore = calculateApprovalScore(projects);
 
     const monthlyProjectsSubmitted = monthKeys.map(
       (monthKey) =>
         projects.filter(
-          (p) =>
-            monthFromDate(p.createdAt) === monthKey &&
-            ["Submitted", "Approved", "Completed"].includes(p.status),
+          (project) =>
+            monthFromDate(project.createdAt) === monthKey &&
+            ["Submitted", "Approved", "Completed"].includes(project.status),
         ).length,
     );
 
     const monthlyProjectsCompleted = monthKeys.map(
       (monthKey) =>
         projects.filter(
-          (p) =>
-            monthFromDate(p.updatedAt || p.createdAt) === monthKey &&
-            ["Completed"].includes(p.status),
+          (project) =>
+            monthFromDate(project.updatedAt || project.createdAt) === monthKey &&
+            ["Completed"].includes(project.status),
         ).length,
     );
 
     const paidInvoices = invoices.filter(
-      (i) => (i.status || "").toUpperCase() === "PAID",
+      (invoice) => (invoice.status || "").toUpperCase() === "PAID",
     );
 
     const monthlyRevenue = monthKeys.map((monthKey) =>
       paidInvoices
-        .filter((i) => monthFromDate(i.paymentDate || i.createdAt) === monthKey)
-        .reduce((sum, i) => sum + Number(i.amount || 0), 0),
+        .filter(
+          (invoice) => monthFromDate(invoice.paymentDate || invoice.createdAt) === monthKey,
+        )
+        .reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0),
     );
 
     const vendorApprovalRate = vendors
       .map((vendor) => {
         const vendorProjects = projects.filter(
-          (p) => p.assignedVendorAuthUserId === vendor.authUserId,
+          (project) => project.assignedVendorAuthUserId === vendor.authUserId,
         );
 
-        const submitted = vendorProjects.filter((p) =>
-          ["Submitted", "Approved", "Completed", "Rejected"].includes(p.status),
+        const submitted = vendorProjects.filter((project) =>
+          ["Submitted", "Approved", "Completed", "Rejected"].includes(project.status),
         ).length;
-
-        const approved = vendorProjects.filter((p) =>
-          ["Approved", "Completed"].includes(p.status),
+        const approved = vendorProjects.filter((project) =>
+          ["Approved", "Completed"].includes(project.status),
         ).length;
-
-        const score =
-          submitted > 0 ? Math.round((approved / submitted) * 100) : 0;
 
         return {
           label: vendor.companyName || vendor.fullName || "Unnamed Vendor",
-          value: score,
+          value: submitted > 0 ? Math.round((approved / submitted) * 100) : 0,
         };
       })
       .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
+      .slice(0, 6);
 
     const rejectionCounts = {};
     projects
-      .filter((p) => p.status === "Rejected")
+      .filter((project) => project.status === "Rejected")
       .forEach((project) => {
         const reason =
           project.rejectionReason ||
           project.rejectReason ||
           project.retakeReason ||
           "";
+
         if (!reason) return;
         rejectionCounts[reason] = (rejectionCounts[reason] || 0) + 1;
       });
@@ -201,10 +183,7 @@ export default function AnalyticsPage() {
     });
 
     const serviceBreakdown = Object.entries(serviceBreakdownMap).map(
-      ([label, value]) => ({
-        label,
-        value,
-      }),
+      ([label, value]) => ({ label, value }),
     );
 
     return {
@@ -224,6 +203,11 @@ export default function AnalyticsPage() {
         totalRejections,
         serviceBreakdown,
       },
+      meta: {
+        projectCount: projects.length,
+        invoiceCount: invoices.length,
+        serviceCount: services.length,
+      },
     };
   }, [projects, vendors, invoices, services]);
 
@@ -236,9 +220,8 @@ export default function AnalyticsPage() {
           boxWidth: 8,
           usePointStyle: true,
           pointStyle: "circle",
-          font: {
-            size: 11,
-          },
+          font: { size: 11 },
+          color: "#8D8A85",
         },
       },
     },
@@ -261,9 +244,7 @@ export default function AnalyticsPage() {
     maintainAspectRatio: false,
     cutout: "68%",
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
     },
   };
 
@@ -316,26 +297,15 @@ export default function AnalyticsPage() {
         label: "Approval Rate",
         data: analytics.charts.vendorApprovalRate.map((item) => item.value),
         backgroundColor: analytics.charts.vendorApprovalRate.map((item) =>
-          item.value >= 80
-            ? "#22C55E"
-            : item.value >= 60
-              ? "#EAB308"
-              : "#EF4444",
+          item.value >= 80 ? "#D88B72" : item.value >= 60 ? "#B1A59A" : "#D9C8BE",
         ),
-        borderRadius: 8,
+        borderRadius: 7,
         barThickness: 16,
       },
     ],
   };
 
-  const serviceColors = [
-    "#D88B72",
-    "#5B8DEF",
-    "#A8A29E",
-    "#8B5CF6",
-    "#22C55E",
-    "#F59E0B",
-  ];
+  const serviceColors = ["#D88B72", "#5B8DEF", "#A8A29E", "#8B5CF6", "#22C55E", "#F59E0B"];
 
   const serviceBreakdownData = {
     labels: analytics.charts.serviceBreakdown.map((item) => item.label),
@@ -352,12 +322,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <Stack
-        alignItems="center"
-        justifyContent="center"
-        sx={{ minHeight: 320 }}
-        spacing={2}
-      >
+      <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 320 }} spacing={2}>
         <CircularProgress />
         <Typography color="text.secondary">Loading analytics...</Typography>
       </Stack>
@@ -377,324 +342,317 @@ export default function AnalyticsPage() {
         minHeight: "100%",
       }}
     >
-      <Typography
-        sx={{
-          fontSize: 28,
-          fontWeight: 700,
-          color: "#1F2937",
-          lineHeight: 1.15,
-          letterSpacing: "-0.02em",
-        }}
-      >
-        Analytics
-      </Typography>
-
-      <Typography
-        sx={{
-          mt: 0.5,
-          color: "#9CA3AF",
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        Field operations performance insights and trends.
-      </Typography>
-
-      <Box
-        sx={{
-          mt: 2.25,
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "1fr 1fr",
-            xl: "repeat(4, 1fr)",
-          },
-          gap: 1.5,
-        }}
-      >
-        <MetricCard
-          icon={<GroupsOutlined sx={{ fontSize: 18, color: "#7A7A7A" }} />}
-          label="Total Vendors"
-          value={analytics.summary.totalVendors}
-          deltaText={`${Math.max(
-            analytics.summary.totalVendors - analytics.summary.activeVendors,
-            0,
-          )} vs inactive`}
-          accent="#22C55E"
-        />
-        <MetricCard
-          icon={<GroupsOutlined sx={{ fontSize: 18, color: "#22C55E" }} />}
-          label="Active Vendors"
-          value={analytics.summary.activeVendors}
-          deltaText={`${analytics.summary.activeVendors} active now`}
-          accent="#22C55E"
-        />
-        <MetricCard
-          icon={<ScheduleOutlined sx={{ fontSize: 18, color: "#D88B72" }} />}
-          label="Avg. Completion Time"
-          value={`${analytics.summary.avgCompletionTimeDays}d`}
-          deltaText="based on completed projects"
-          accent="#22C55E"
-        />
-        <MetricCard
-          icon={<VerifiedOutlined sx={{ fontSize: 18, color: "#5B8DEF" }} />}
-          label="Avg. Approval Score"
-          value={`${analytics.summary.avgApprovalScore}%`}
-          deltaText="approved vs submitted"
-          accent="#22C55E"
-        />
-      </Box>
-
-      <Box
-        sx={{
-          mt: 1.5,
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" },
-          gap: 1.5,
-        }}
-      >
-        <CardPanel
-          title="Monthly Projects"
-          subtitle="Completed vs submitted volume"
+      <Box sx={{ maxWidth: 1240 }}>
+        <Typography
+          sx={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: "#1F2937",
+            lineHeight: 1.15,
+            letterSpacing: "-0.02em",
+          }}
         >
-          <Box sx={{ mt: 1.5, height: 260 }}>
-            {analytics.charts.monthLabels.length ? (
-              <Line data={monthlyProjectsData} options={lineChartOptions} />
-            ) : (
-              <EmptyChart label="No monthly project data available" />
-            )}
-          </Box>
-        </CardPanel>
+          Analytics
+        </Typography>
 
-        <CardPanel
-          title="Revenue Analytics"
-          subtitle="Monthly revenue trend"
-          rightBadge={
-            analytics.charts.monthlyRevenue.some((value) => value > 0)
-              ? "+ real revenue"
-              : null
-          }
+        <Typography
+          sx={{
+            mt: 0.5,
+            color: "#9CA3AF",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
         >
-          <Box sx={{ mt: 1.5, height: 260 }}>
-            {analytics.charts.monthlyRevenue.some((value) => value > 0) ? (
-              <Line data={revenueData} options={lineChartOptions} />
-            ) : (
-              <EmptyChart label="No invoice revenue data available" />
-            )}
-          </Box>
-        </CardPanel>
-      </Box>
+          Field operations performance insights and trends.
+        </Typography>
 
-      <Box
-        sx={{
-          mt: 1.5,
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr 0.95fr" },
-          gap: 1.5,
-          alignItems: "stretch",
-        }}
-      >
-        <CardPanel
-          title="Vendor Approval Rate"
-          subtitle="Quality scores by vendor"
+        <Box
+          sx={{
+            mt: 2,
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              xl: "repeat(4, 1fr)",
+            },
+            gap: 1.35,
+          }}
         >
-          <Box sx={{ mt: 1.5, height: 320 }}>
-            {analytics.charts.vendorApprovalRate.length ? (
-              <Bar
-                data={vendorApprovalData}
-                options={{
-                  ...lineChartOptions,
-                  indexAxis: "y",
-                  plugins: {
-                    legend: { display: false },
-                  },
-                  scales: {
-                    x: {
-                      grid: { color: "#F2ECE6" },
-                      border: { display: false },
-                      ticks: { color: "#9CA3AF", font: { size: 11 } },
-                      max: 100,
+          <MetricCard
+            icon={<GroupsOutlined sx={{ fontSize: 16, color: "#8B847D" }} />}
+            label="Total Vendors"
+            value={analytics.summary.totalVendors}
+            deltaText={`${Math.max(
+              analytics.summary.totalVendors - analytics.summary.activeVendors,
+              0,
+            )} inactive`}
+            bubbleColor="rgba(209, 203, 197, 0.25)"
+          />
+          <MetricCard
+            icon={<GroupsOutlined sx={{ fontSize: 16, color: "#3AC46F" }} />}
+            label="Active Vendors"
+            value={analytics.summary.activeVendors}
+            deltaText={`${analytics.meta.projectCount} total projects`}
+            bubbleColor="rgba(179, 235, 199, 0.24)"
+          />
+          <MetricCard
+            icon={<ScheduleOutlined sx={{ fontSize: 16, color: "#D88B72" }} />}
+            label="Avg. Completion Time"
+            value={`${analytics.summary.avgCompletionTimeDays}d`}
+            deltaText={`${analytics.meta.invoiceCount} invoices tracked`}
+            bubbleColor="rgba(235, 186, 168, 0.24)"
+          />
+          <MetricCard
+            icon={<VerifiedOutlined sx={{ fontSize: 16, color: "#5B8DEF" }} />}
+            label="Avg. Approval Score"
+            value={`${analytics.summary.avgApprovalScore}%`}
+            deltaText={`${analytics.meta.serviceCount} service types`}
+            bubbleColor="rgba(169, 196, 255, 0.22)"
+          />
+        </Box>
+
+        <Box
+          sx={{
+            mt: 1.5,
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" },
+            gap: 1.5,
+          }}
+        >
+          <CardPanel
+            title="Monthly Projects"
+            subtitle="Completed vs submitted volume"
+          >
+            <Box sx={{ mt: 1.5, height: 270 }}>
+              {analytics.charts.monthLabels.length ? (
+                <Line data={monthlyProjectsData} options={lineChartOptions} />
+              ) : (
+                <EmptyChart label="No monthly project data available" />
+              )}
+            </Box>
+          </CardPanel>
+
+          <CardPanel
+            title="Revenue Analytics"
+            subtitle="Monthly revenue trend"
+            rightBadge={
+              analytics.charts.monthlyRevenue.some((value) => value > 0)
+                ? "Real invoice data"
+                : null
+            }
+          >
+            <Box sx={{ mt: 1.5, height: 270 }}>
+              {analytics.charts.monthlyRevenue.some((value) => value > 0) ? (
+                <Line data={revenueData} options={lineChartOptions} />
+              ) : (
+                <EmptyChart label="No invoice revenue data available" />
+              )}
+            </Box>
+          </CardPanel>
+        </Box>
+
+        <Box
+          sx={{
+            mt: 1.5,
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr 0.95fr" },
+            gap: 1.5,
+            alignItems: "stretch",
+          }}
+        >
+          <CardPanel
+            title="Vendor Approval Rate"
+            subtitle="Quality scores by vendor"
+          >
+            <Box sx={{ mt: 1.5, height: 320 }}>
+              {analytics.charts.vendorApprovalRate.length ? (
+                <Bar
+                  data={vendorApprovalData}
+                  options={{
+                    ...lineChartOptions,
+                    indexAxis: "y",
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      x: {
+                        grid: { color: "#F2ECE6" },
+                        border: { display: false },
+                        ticks: { color: "#9CA3AF", font: { size: 11 } },
+                        max: 100,
+                      },
+                      y: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: { color: "#9CA3AF", font: { size: 11 } },
+                      },
                     },
-                    y: {
-                      grid: { display: false },
-                      border: { display: false },
-                      ticks: { color: "#9CA3AF", font: { size: 11 } },
-                    },
-                  },
-                }}
-              />
-            ) : (
-              <EmptyChart label="No vendor performance data available" />
-            )}
-          </Box>
-        </CardPanel>
+                  }}
+                />
+              ) : (
+                <EmptyChart label="No vendor performance data available" />
+              )}
+            </Box>
+          </CardPanel>
 
-        <CardPanel
-          title="Rejection Reasons"
-          subtitle="Top causes for submission rejections"
-        >
-          <Box sx={{ mt: 1.25 }}>
-            {analytics.charts.rejectionReasons.length ? (
-              <Stack spacing={1.4}>
-                {analytics.charts.rejectionReasons.map((item, index) => {
-                  const percent = analytics.charts.totalRejections
-                    ? Math.round(
-                        (item.count / analytics.charts.totalRejections) * 100,
-                      )
-                    : 0;
+          <CardPanel
+            title="Rejection Reasons"
+            subtitle="Top causes for submission rejections"
+          >
+            <Box sx={{ mt: 1.25 }}>
+              {analytics.charts.rejectionReasons.length ? (
+                <Stack spacing={1.4}>
+                  {analytics.charts.rejectionReasons.map((item, index) => {
+                    const percent = analytics.charts.totalRejections
+                      ? Math.round((item.count / analytics.charts.totalRejections) * 100)
+                      : 0;
 
-                  const color =
-                    index === 0
-                      ? "#EF4444"
-                      : index === 1
+                    const color =
+                      index === 0
                         ? "#D88B72"
-                        : index === 2
-                          ? "#EAB308"
-                          : "#A8A29E";
+                        : index === 1
+                          ? "#B1A59A"
+                          : index === 2
+                            ? "#EAB308"
+                            : "#D9C8BE";
+
+                    return (
+                      <Box key={item.label}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Typography
+                            sx={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: "#374151",
+                              maxWidth: 235,
+                            }}
+                          >
+                            {item.label}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+                              color: "#8C8C8C",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {item.count}  {percent}%
+                          </Typography>
+                        </Stack>
+
+                        <Box
+                          sx={{
+                            mt: 0.6,
+                            width: "100%",
+                            height: 8,
+                            borderRadius: 999,
+                            bgcolor: "#EEE8E2",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: `${percent}%`,
+                              height: "100%",
+                              bgcolor: color,
+                              borderRadius: 999,
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                    );
+                  })}
+
+                  <Typography
+                    sx={{
+                      pt: 1.2,
+                      fontSize: 13,
+                      color: "#6B7280",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Total Rejections  {analytics.charts.totalRejections}
+                  </Typography>
+                </Stack>
+              ) : (
+                <EmptyChart label="No rejection reason data available" />
+              )}
+            </Box>
+          </CardPanel>
+
+          <CardPanel
+            title="Service Breakdown"
+            subtitle="Projects by service type"
+          >
+            <Box sx={{ mt: 1.1, height: 210 }}>
+              {analytics.charts.serviceBreakdown.length ? (
+                <Doughnut data={serviceBreakdownData} options={doughnutOptions} />
+              ) : (
+                <EmptyChart label="No service breakdown available" />
+              )}
+            </Box>
+
+            {analytics.charts.serviceBreakdown.length ? (
+              <Stack spacing={0.85} sx={{ mt: 1 }}>
+                {analytics.charts.serviceBreakdown.map((item, index) => {
+                  const total = analytics.charts.serviceBreakdown.reduce(
+                    (sum, entry) => sum + entry.value,
+                    0,
+                  );
+                  const percent = total ? Math.round((item.value / total) * 100) : 0;
 
                   return (
-                    <Box key={item.label}>
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
+                    <Stack
+                      key={item.label}
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Stack direction="row" spacing={0.8} alignItems="center">
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            bgcolor: serviceColors[index % serviceColors.length],
+                          }}
+                        />
                         <Typography
                           sx={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: "#374151",
+                            fontSize: 12.5,
+                            color: "#4B5563",
+                            fontWeight: 500,
                           }}
                         >
                           {item.label}
                         </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: 12,
-                            color: "#8C8C8C",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {item.count} &nbsp; {percent}%
-                        </Typography>
                       </Stack>
 
-                      <Box
-                        sx={{
-                          mt: 0.6,
-                          width: "100%",
-                          height: 8,
-                          borderRadius: 999,
-                          bgcolor: "#EEE8E2",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: `${percent}%`,
-                            height: "100%",
-                            bgcolor: color,
-                            borderRadius: 999,
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  );
-                })}
-
-                <Typography
-                  sx={{
-                    pt: 1.2,
-                    fontSize: 13,
-                    color: "#6B7280",
-                    fontWeight: 700,
-                  }}
-                >
-                  Total Rejections &nbsp; {analytics.charts.totalRejections}
-                </Typography>
-              </Stack>
-            ) : (
-              <EmptyChart label="No rejection reason data available" />
-            )}
-          </Box>
-        </CardPanel>
-
-        <CardPanel
-          title="Service Breakdown"
-          subtitle="Projects by service type"
-        >
-          <Box sx={{ mt: 1.25, height: 210 }}>
-            {analytics.charts.serviceBreakdown.length ? (
-              <Doughnut data={serviceBreakdownData} options={doughnutOptions} />
-            ) : (
-              <EmptyChart label="No service breakdown available" />
-            )}
-          </Box>
-
-          {analytics.charts.serviceBreakdown.length ? (
-            <Stack spacing={0.9} sx={{ mt: 1 }}>
-              {analytics.charts.serviceBreakdown.map((item, index) => {
-                const total = analytics.charts.serviceBreakdown.reduce(
-                  (sum, entry) => sum + entry.value,
-                  0,
-                );
-                const percent = total
-                  ? Math.round((item.value / total) * 100)
-                  : 0;
-
-                return (
-                  <Stack
-                    key={item.label}
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="center"
-                  >
-                    <Stack direction="row" spacing={0.8} alignItems="center">
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          bgcolor: serviceColors[index % serviceColors.length],
-                        }}
-                      />
                       <Typography
                         sx={{
                           fontSize: 12.5,
-                          color: "#4B5563",
-                          fontWeight: 500,
+                          color: "#8C8C8C",
+                          fontWeight: 600,
                         }}
                       >
-                        {item.label}
+                        {percent}%
                       </Typography>
                     </Stack>
-
-                    <Typography
-                      sx={{
-                        fontSize: 12.5,
-                        color: "#8C8C8C",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {percent}%
-                    </Typography>
-                  </Stack>
-                );
-              })}
-            </Stack>
-          ) : null}
-        </CardPanel>
+                  );
+                })}
+              </Stack>
+            ) : null}
+          </CardPanel>
+        </Box>
       </Box>
     </Box>
   );
 }
 
-function MetricCard({ icon, label, value, deltaText, accent }) {
+function MetricCard({ icon, label, value, deltaText, bubbleColor }) {
   return (
     <Card
       sx={{
-        p: 2,
-        borderRadius: 1,
+        p: 1.75,
+        borderRadius: 1.2,
         border: "1px solid #E9E1DB",
         boxShadow: "none",
         bgcolor: "#FFFFFF",
@@ -705,38 +663,28 @@ function MetricCard({ icon, label, value, deltaText, accent }) {
       <Box
         sx={{
           position: "absolute",
-          top: -16,
-          right: -8,
-          width: 92,
-          height: 92,
+          top: 10,
+          right: -10,
+          width: 62,
+          height: 62,
           borderRadius: "50%",
-          bgcolor: "rgba(0,0,0,0.03)",
+          bgcolor: bubbleColor || "rgba(220, 211, 204, 0.22)",
         }}
       />
 
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontSize: 12,
-              color: "#9CA3AF",
-              fontWeight: 500,
-            }}
-          >
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+        <Box sx={{ position: "relative", zIndex: 1 }}>
+          <Typography sx={{ fontSize: 11.5, color: "#A39D96", fontWeight: 500 }}>
             {label}
           </Typography>
 
           <Typography
             sx={{
-              mt: 0.6,
-              fontSize: 22,
+              mt: 0.45,
+              fontSize: 31,
               fontWeight: 700,
               color: "#1F2937",
-              lineHeight: 1.1,
+              lineHeight: 1,
             }}
           >
             {value}
@@ -744,22 +692,22 @@ function MetricCard({ icon, label, value, deltaText, accent }) {
 
           <Typography
             sx={{
-              mt: 1.2,
-              fontSize: 12,
-              color: accent || "#22C55E",
-              fontWeight: 600,
+              mt: 0.95,
+              fontSize: 11.5,
+              color: "#8E8882",
+              fontWeight: 500,
             }}
           >
-            ↗ {deltaText}
+            {deltaText}
           </Typography>
         </Box>
 
         <Box
           sx={{
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             borderRadius: "50%",
-            bgcolor: "rgba(0,0,0,0.04)",
+            bgcolor: "#FBF6F2",
             display: "grid",
             placeItems: "center",
             zIndex: 1,
@@ -777,17 +725,13 @@ function CardPanel({ title, subtitle, rightBadge, children }) {
     <Card
       sx={{
         p: 2,
-        borderRadius: 1,
+        borderRadius: 1.2,
         border: "1px solid #E9E1DB",
         boxShadow: "none",
         bgcolor: "#FFFFFF",
       }}
     >
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="flex-start"
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
         <Box>
           <Typography
             sx={{
@@ -817,9 +761,9 @@ function CardPanel({ title, subtitle, rightBadge, children }) {
               px: 1.1,
               py: 0.45,
               borderRadius: 1,
-              bgcolor: "#EAFBF1",
-              color: "#22C55E",
-              fontSize: 11.5,
+              bgcolor: "#F3EEE9",
+              color: "#8D7B72",
+              fontSize: 11.25,
               fontWeight: 700,
             }}
           >
@@ -858,9 +802,9 @@ function getRecentMonthKeys(count) {
   const now = new Date();
 
   for (let i = count - 1; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     result.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
     );
   }
 
@@ -869,15 +813,15 @@ function getRecentMonthKeys(count) {
 
 function monthFromDate(value) {
   if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function formatMonthKey(key) {
   const [year, month] = key.split("-");
-  const d = new Date(Number(year), Number(month) - 1, 1);
-  return d.toLocaleString("en-US", { month: "short" });
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  return date.toLocaleString("en-US", { month: "short" });
 }
 
 function calculateAverageCompletionDays(projects) {
@@ -897,18 +841,17 @@ function calculateAverageCompletionDays(projects) {
     })
     .filter((value) => value !== null);
 
-  if (!values.length) return 0;
+    if (!values.length) return 0;
 
   return Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1));
 }
 
 function calculateApprovalScore(projects) {
-  const submitted = projects.filter((p) =>
-    ["Submitted", "Approved", "Completed", "Rejected"].includes(p.status),
+  const submitted = projects.filter((project) =>
+    ["Submitted", "Approved", "Completed", "Rejected"].includes(project.status),
   ).length;
-
-  const approved = projects.filter((p) =>
-    ["Approved", "Completed"].includes(p.status),
+  const approved = projects.filter((project) =>
+    ["Approved", "Completed"].includes(project.status),
   ).length;
 
   if (!submitted) return 0;

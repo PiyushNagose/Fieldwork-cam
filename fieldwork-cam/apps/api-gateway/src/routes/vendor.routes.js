@@ -24,6 +24,39 @@ router.get(
 );
 
 router.get(
+  "/me/profile",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "get",
+      url: `${SERVICES.USER}/vendors/me/profile`,
+      headers: {
+        authorization: req.headers.authorization,
+      },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
+router.put(
+  "/me/profile",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "put",
+      url: `${SERVICES.USER}/vendors/me/profile`,
+      data: req.body,
+      headers: {
+        authorization: req.headers.authorization,
+      },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
+router.get(
   "/:id",
   authMiddleware,
   asyncHandler(async (req, res) => {
@@ -43,6 +76,8 @@ router.post(
   "/admin/create",
   authMiddleware,
   asyncHandler(async (req, res) => {
+    const inviteBaseUrl = req.headers.origin || "http://localhost:5173";
+
     const inviteResponse = await forwardRequest({
       method: "post",
       url: `${SERVICES.AUTH}/auth/invite-user`,
@@ -50,6 +85,9 @@ router.post(
         phone: req.body.phone,
         email: req.body.email,
         role: "VENDOR_OWNER",
+        fullName: req.body.fullName,
+        companyName: req.body.companyName,
+        inviteBaseUrl,
       },
       headers: {
         authorization: req.headers.authorization,
@@ -84,24 +122,9 @@ router.post(
         ...vendorData,
         inviteToken: inviteData?.inviteToken || "",
         inviteLink: inviteData?.inviteLink || "",
+        emailDelivery: inviteData?.emailDelivery || null,
       },
     });
-  }),
-);
-
-router.get(
-  "/me/profile",
-  authMiddleware,
-  asyncHandler(async (req, res) => {
-    const data = await forwardRequest({
-      method: "get",
-      url: `${SERVICES.USER}/vendors/me/profile`,
-      headers: {
-        authorization: req.headers.authorization,
-      },
-    });
-
-    res.status(200).json(data);
   }),
 );
 

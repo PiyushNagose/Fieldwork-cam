@@ -1,14 +1,24 @@
 import React, { useState } from "react";
 import {
+  Alert,
   Box,
+  Button,
   Dialog,
   DialogContent,
-  Typography,
+  DialogTitle,
+  IconButton,
+  MenuItem,
   Stack,
-  OutlinedInput,
-  Button,
-  Chip,
+  TextField,
+  Typography,
 } from "@mui/material";
+import {
+  CloseOutlined,
+  EmailOutlined,
+  LocationOnOutlined,
+  PersonOutlineOutlined,
+  PhoneOutlined,
+} from "@mui/icons-material";
 import { createStaffApi } from "../../api/staff.api";
 
 const SPECIALTIES = [
@@ -25,9 +35,19 @@ const SPECIALTIES = [
   "Foundation",
 ];
 
+const ROLE_OPTIONS = [
+  "Field Photographer",
+  "Senior Photographer",
+  "Junior Photographer",
+  "Drone Operator",
+  "Site Inspector",
+];
+
+const STATUS_OPTIONS = ["ACTIVE", "ON_LEAVE", "INACTIVE"];
+
 export default function AddStaffModal({ open, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
-
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     fullName: "",
     roleTitle: "",
@@ -37,143 +57,238 @@ export default function AddStaffModal({ open, onClose, onSuccess }) {
     phone: "",
     location: "",
     specialties: [],
-    inviteMethod: "SMS",
+    inviteMethod: "EMAIL",
   });
 
-  const handleChange = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const toggleSpecialty = (sp) => {
+  const handleChange = (key) => (event) => {
     setForm((prev) => ({
       ...prev,
-      specialties: prev.specialties.includes(sp)
-        ? prev.specialties.filter((s) => s !== sp)
-        : [...prev.specialties, sp],
+      [key]: event.target.value,
     }));
+  };
+
+  const toggleSpecialty = (specialty) => {
+    setForm((prev) => ({
+      ...prev,
+      specialties: prev.specialties.includes(specialty)
+        ? prev.specialties.filter((item) => item !== specialty)
+        : [...prev.specialties, specialty],
+    }));
+  };
+
+  const resetForm = () => {
+    setForm({
+      fullName: "",
+      roleTitle: "",
+      status: "ACTIVE",
+      profilePhotoUrl: "",
+      email: "",
+      phone: "",
+      location: "",
+      specialties: [],
+      inviteMethod: "EMAIL",
+    });
+    setError("");
   };
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
+      setError("");
       await createStaffApi(form);
       onSuccess?.();
-      onClose();
+      onClose?.();
+      resetForm();
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to add staff member",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogContent sx={{ p: 3 }}>
-        {/* HEADER */}
-        <Typography sx={{ fontSize: 20, fontWeight: 700 }}>
-          Add New Staff Member
-        </Typography>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="md"
+      PaperProps={{
+        sx: {
+          borderRadius: 1,
+          overflow: "hidden",
+        },
+      }}
+    >
+      <DialogTitle sx={{ px: 2, py: 2, borderBottom: "1px solid #F0EBE6" }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+          <Box>
+            <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#1F2937" }}>
+              Add New Staff Member
+            </Typography>
+            <Typography
+              sx={{ mt: 0.45, fontSize: 12.5, color: "#9CA3AF", fontWeight: 500 }}
+            >
+              Fill in the details to add a new team member
+            </Typography>
+          </Box>
 
-        <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: 0.5 }}>
-          Fill in the details to add a new team member
-        </Typography>
+          <IconButton onClick={onClose} size="small" sx={{ color: "#9CA3AF" }}>
+            <CloseOutlined sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
 
-        {/* PERSONAL INFO */}
-        <Typography sx={{ mt: 2, fontSize: 14, fontWeight: 600 }}>
-          Personal Information
-        </Typography>
+      <DialogContent sx={{ px: 2, py: 2 }}>
+        {error ? (
+          <Alert severity="error" sx={{ mb: 1.5, borderRadius: 1 }}>
+            {error}
+          </Alert>
+        ) : null}
 
-        <Stack spacing={1.5} sx={{ mt: 1.5 }}>
-          <OutlinedInput
-            placeholder="Full Name"
+        <SectionTitle title="Personal Information" />
+        <Stack spacing={1.5}>
+          <Field
+            label="Full Name *"
             value={form.fullName}
-            onChange={(e) => handleChange("fullName", e.target.value)}
+            onChange={handleChange("fullName")}
+            placeholder="e.g., John Smith"
+            icon={<PersonOutlineOutlined sx={{ fontSize: 16 }} />}
           />
 
-          <OutlinedInput
-            placeholder="Role"
+          <TextField
+            select
+            label="Role *"
             value={form.roleTitle}
-            onChange={(e) => handleChange("roleTitle", e.target.value)}
-          />
+            onChange={handleChange("roleTitle")}
+            fullWidth
+            size="small"
+            sx={fieldSx}
+          >
+            {ROLE_OPTIONS.map((item) => (
+              <MenuItem key={item} value={item}>
+                {item}
+              </MenuItem>
+            ))}
+          </TextField>
 
-          <Stack direction="row" spacing={1}>
-            <OutlinedInput
-              fullWidth
-              placeholder="Status"
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: 1.5,
+            }}
+          >
+            <TextField
+              select
+              label="Status"
               value={form.status}
-              onChange={(e) => handleChange("status", e.target.value)}
-            />
-
-            <OutlinedInput
+              onChange={handleChange("status")}
               fullWidth
-              placeholder="Profile Photo URL"
+              size="small"
+              sx={fieldSx}
+            >
+              {STATUS_OPTIONS.map((item) => (
+                <MenuItem key={item} value={item}>
+                  {item.replace("_", " ")}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <Field
+              label="Profile Photo"
               value={form.profilePhotoUrl}
-              onChange={(e) => handleChange("profilePhotoUrl", e.target.value)}
+              onChange={handleChange("profilePhotoUrl")}
+              placeholder="https://..."
             />
-          </Stack>
+          </Box>
         </Stack>
 
-        {/* CONTACT */}
-        <Typography sx={{ mt: 2, fontSize: 14, fontWeight: 600 }}>
-          Contact Information
-        </Typography>
-
-        <Stack spacing={1.5} sx={{ mt: 1.5 }}>
-          <OutlinedInput
-            placeholder="Email Address"
+        <SectionTitle title="Contact Information" sx={{ mt: 2 }} />
+        <Stack spacing={1.5}>
+          <Field
+            label="Email Address *"
             value={form.email}
-            onChange={(e) => handleChange("email", e.target.value)}
+            onChange={handleChange("email")}
+            placeholder="john.smith@fieldworkcam.co"
+            icon={<EmailOutlined sx={{ fontSize: 16 }} />}
           />
 
-          <Stack direction="row" spacing={1}>
-            <OutlinedInput
-              fullWidth
-              placeholder="Phone Number"
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: 1.5,
+            }}
+          >
+            <Field
+              label="Phone Number *"
               value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
+              onChange={handleChange("phone")}
+              placeholder="(555) 123-4567"
+              icon={<PhoneOutlined sx={{ fontSize: 16 }} />}
             />
 
-            <OutlinedInput
-              fullWidth
-              placeholder="Location"
+            <Field
+              label="Location *"
               value={form.location}
-              onChange={(e) => handleChange("location", e.target.value)}
+              onChange={handleChange("location")}
+              placeholder="Austin, TX"
+              icon={<LocationOnOutlined sx={{ fontSize: 16 }} />}
             />
-          </Stack>
+          </Box>
         </Stack>
 
-        {/* SPECIALTIES */}
-        <Typography sx={{ mt: 2, fontSize: 14, fontWeight: 600 }}>
-          Specialties
-        </Typography>
-
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
-        >
-          {SPECIALTIES.map((sp) => {
-            const selected = form.specialties.includes(sp);
+        <SectionTitle title="Specialties" sx={{ mt: 2 }} />
+        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+          {SPECIALTIES.map((item) => {
+            const selected = form.specialties.includes(item);
             return (
-              <Chip
-                key={sp}
-                label={sp}
-                onClick={() => toggleSpecialty(sp)}
+              <Button
+                key={item}
+                onClick={() => toggleSpecialty(item)}
                 sx={{
+                  minHeight: 28,
+                  px: 1.1,
+                  borderRadius: 999,
+                  border: "1px solid #E6EBF1",
+                  bgcolor: selected ? "#EAF3FF" : "#F5F7FA",
+                  color: selected ? "#2563EB" : "#4B5563",
                   fontSize: 12,
-                  bgcolor: selected ? "#1F2937" : "#F3F4F6",
-                  color: selected ? "#fff" : "#374151",
+                  fontWeight: 500,
+                  textTransform: "none",
+                  "&:hover": {
+                    bgcolor: selected ? "#EAF3FF" : "#EEF2F6",
+                  },
                 }}
-              />
+              >
+                {item}
+              </Button>
             );
           })}
         </Stack>
 
-        {/* ACTIONS */}
-        <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ mt: 2.5, pt: 1, borderTop: "1px solid #F0EBE6" }}
+        >
           <Button
             fullWidth
             variant="outlined"
             onClick={onClose}
-            sx={{ height: 40 }}
+            sx={{
+              minHeight: 40,
+              borderRadius: 1,
+              borderColor: "#E8E1DA",
+              color: "#6B7280",
+              fontSize: 12.5,
+              fontWeight: 500,
+            }}
           >
             Cancel
           </Button>
@@ -184,10 +299,17 @@ export default function AddStaffModal({ open, onClose, onSuccess }) {
             onClick={handleSubmit}
             disabled={loading}
             sx={{
-              height: 40,
-              bgcolor: "#CBB8AD",
-              color: "#000",
-              boxShadow: "none",
+              minHeight: 40,
+              borderRadius: 1,
+              bgcolor: "#EFD9CE",
+              color: "#111827",
+              boxShadow: "0 10px 22px rgba(201, 180, 168, 0.28)",
+              fontSize: 12.5,
+              fontWeight: 600,
+              "&:hover": {
+                bgcolor: "#E4CEC3",
+                boxShadow: "0 10px 22px rgba(201, 180, 168, 0.28)",
+              },
             }}
           >
             {loading ? "Adding..." : "Add Staff Member"}
@@ -197,3 +319,64 @@ export default function AddStaffModal({ open, onClose, onSuccess }) {
     </Dialog>
   );
 }
+
+function SectionTitle({ title, sx }) {
+  return (
+    <Typography
+      sx={{
+        mt: 0.5,
+        mb: 1.3,
+        fontSize: 14,
+        fontWeight: 700,
+        color: "#1F2937",
+        ...sx,
+      }}
+    >
+      {title}
+    </Typography>
+  );
+}
+
+function Field({ icon, ...props }) {
+  return (
+    <TextField
+      fullWidth
+      size="small"
+      InputProps={{
+        startAdornment: icon ? (
+          <Box
+            sx={{
+              mr: 0.9,
+              color: "#B0B5BE",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            {icon}
+          </Box>
+        ) : null,
+      }}
+      sx={fieldSx}
+      {...props}
+    />
+  );
+}
+
+const fieldSx = {
+  "& .MuiInputLabel-root": {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontWeight: 500,
+  },
+  "& .MuiInputBase-root": {
+    minHeight: 40,
+    borderRadius: 1,
+    bgcolor: "#FFFFFF",
+    fontSize: 12.5,
+    color: "#374151",
+    fontWeight: 500,
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#DCE2EA",
+  },
+};

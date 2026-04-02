@@ -15,18 +15,24 @@ import {
   Typography,
 } from "@mui/material";
 import {
+  CloudOutlined,
   EmailOutlined,
+  GroupsOutlined,
+  LocationOnOutlined,
   LockOutlined,
+  ShieldOutlined,
   Visibility,
   VisibilityOff,
-  ShieldOutlined,
-  LocationOnOutlined,
-  CloudOutlined,
-  GroupsOutlined,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { loginEmailApi } from "../../api/auth.api";
 import { useAuth } from "../../auth/AuthContext";
+
+const featureItems = [
+  { icon: <LocationOnOutlined sx={{ fontSize: 16 }} />, label: "Geo-Tagged Photos" },
+  { icon: <CloudOutlined sx={{ fontSize: 16 }} />, label: "Secure Cloud Storage" },
+  { icon: <GroupsOutlined sx={{ fontSize: 16 }} />, label: "Team Management" },
+];
 
 export default function LoginPage() {
   const { login, isAuthenticated, user } = useAuth();
@@ -66,8 +72,7 @@ export default function LoginPage() {
   }, []);
 
   const handleChange = (key) => (event) => {
-    const value =
-      key === "rememberMe" ? event.target.checked : event.target.value;
+    const value = key === "rememberMe" ? event.target.checked : event.target.value;
 
     setForm((prev) => ({
       ...prev,
@@ -119,49 +124,58 @@ export default function LoginPage() {
       sx={{
         minHeight: "100vh",
         display: "grid",
-        gridTemplateColumns: { xs: "1fr", md: "1.05fr 0.95fr" },
+        gridTemplateColumns: { xs: "1fr", lg: "1fr 1fr" },
         bgcolor: "#F5F1EC",
       }}
     >
       <Box
         sx={{
           position: "relative",
-          display: { xs: "none", md: "flex" },
+          display: { xs: "none", lg: "flex" },
           alignItems: "center",
           justifyContent: "center",
+          overflow: "hidden",
           backgroundImage:
-            'linear-gradient(rgba(17,24,39,0.56), rgba(17,24,39,0.56)), url("/login-bg.jpg")',
+            "linear-gradient(rgba(27,31,42,0.46), rgba(27,31,42,0.58)), url('/login-bg.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           px: 6,
           py: 5,
         }}
       >
-        <Box sx={{ width: "100%", maxWidth: 560, color: "#fff" }}>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.18) 100%)",
+          }}
+        />
+
+        <Box sx={{ position: "relative", width: "100%", maxWidth: 560, color: "#fff" }}>
           <Box
             component="img"
             src="/logo.png"
             alt="LaFloridians"
             sx={{
-              width: 375,
+              width: 215,
               objectFit: "contain",
-              mb: 0.5,
-              ml: 5,
+              mb: 4.5,
             }}
           />
 
           <Typography
             sx={{
-              fontSize: { md: 42, lg: 48 },
-              lineHeight: 1.3,
-              fontWeight: 900,
-              letterSpacing: "-0.03em",
-              color: "#fff",
+              fontSize: { lg: 46, xl: 52 },
+              lineHeight: 1.06,
+              fontWeight: 800,
+              letterSpacing: "-0.04em",
+              color: "#FFFFFF",
             }}
           >
             Capture. Document.
             <br />
-            <Box component="span" sx={{ color: "#8E8CFF" }}>
+            <Box component="span" sx={{ color: "#9EA2FF" }}>
               Deliver.
             </Box>
           </Typography>
@@ -169,10 +183,10 @@ export default function LoginPage() {
           <Typography
             sx={{
               mt: 2.5,
-              maxWidth: 500,
-              fontSize: 15,
-              lineHeight: 1.75,
-              color: "rgba(255,255,255,0.88)",
+              maxWidth: 470,
+              fontSize: 14.5,
+              lineHeight: 1.7,
+              color: "rgba(255,255,255,0.84)",
             }}
           >
             Empower your field teams with intelligent photo documentation.
@@ -180,25 +194,16 @@ export default function LoginPage() {
             real-time reporting.
           </Typography>
 
-          <Stack direction="row" flexWrap="wrap" gap={1.25} sx={{ mt: 3 }}>
-            <FeatureChip
-              icon={<LocationOnOutlined sx={{ fontSize: 16 }} />}
-              label="Geo-Tagged Photos"
-            />
-            <FeatureChip
-              icon={<CloudOutlined sx={{ fontSize: 16 }} />}
-              label="Secure Cloud Storage"
-            />
-            <FeatureChip
-              icon={<GroupsOutlined sx={{ fontSize: 16 }} />}
-              label="Team Management"
-            />
+          <Stack direction="row" flexWrap="wrap" gap={1.05} sx={{ mt: 3.2, maxWidth: 430 }}>
+            {featureItems.map((item) => (
+              <FeatureChip key={item.label} icon={item.icon} label={item.label} />
+            ))}
           </Stack>
 
           <Stack
             direction="row"
             spacing={4}
-            sx={{ mt: 4.5, flexWrap: "wrap", rowGap: 2.5 }}
+            sx={{ mt: 4.8, flexWrap: "wrap", rowGap: 2.2 }}
           >
             <StatItem value="12K+" label="Properties Documented" />
             <StatItem value="850+" label="Active Field Workers" />
@@ -214,64 +219,85 @@ export default function LoginPage() {
           justifyContent: "center",
           px: { xs: 2, sm: 3, md: 4 },
           py: { xs: 3, md: 4 },
+          background: "linear-gradient(180deg, #F4EFEA 0%, #F7F2EE 100%)",
         }}
       >
         <Card
           sx={{
             width: "100%",
-            maxWidth: 500,
-            borderRadius: 1,
-            boxShadow: "0 14px 36px rgba(15, 23, 42, 0.08)",
+            maxWidth: 445,
+            borderRadius: 1.5,
+            border: "1px solid #ECE4DD",
+            boxShadow: "0 24px 50px rgba(31, 41, 55, 0.08)",
+            bgcolor: "#FFFFFF",
           }}
         >
-          <CardContent sx={{ p: { xs: 3, sm: 3.5 } }}>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5, // space between icon and text
-                mb: 1.5,
-              }}
-            >
+          <CardContent sx={{ p: { xs: 2.8, sm: 3.4 } }}>
+            <Stack direction="row" spacing={1.25} alignItems="center">
               <Box
                 sx={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 2,
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
                   bgcolor: "#EEF2FF",
                   display: "grid",
                   placeItems: "center",
-                  mb: 1.75,
                 }}
               >
-                <LockOutlined sx={{ color: "#4F46E5", fontSize: 20 }} />
+                <LockOutlined sx={{ color: "#5B5BFF", fontSize: 17 }} />
               </Box>
 
+              <Box>
+                <Typography
+                  sx={{
+                    fontSize: { xs: 20, sm: 22 },
+                    fontWeight: 700,
+                    color: "#1F2937",
+                    lineHeight: 1,
+                  }}
+                >
+                  Sign In
+                </Typography>
+                <Typography
+                  sx={{
+                    mt: 0.55,
+                    color: "#8F8A84",
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                  }}
+                >
+                  Sign in to your dashboard
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Box
+              sx={{
+                display: { xs: "block", lg: "none" },
+                mt: 2.2,
+                p: 1.45,
+                borderRadius: 1,
+                bgcolor: "#FBF6F2",
+                border: "1px solid #EFE4DB",
+              }}
+            >
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>
+                FieldWork Cam
+              </Typography>
               <Typography
                 sx={{
-                  fontSize: { xs: 28, sm: 32 },
-                  fontWeight: 800,
-                  color: "#111827",
-                  mb: 2,
+                  mt: 0.4,
+                  fontSize: 11.5,
+                  lineHeight: 1.7,
+                  color: "#8F8A84",
                 }}
               >
-                Sign In
+                Empower your field teams with intelligent photo documentation.
               </Typography>
             </Box>
 
-            <Typography
-              sx={{
-                mt: 0.75,
-                color: "#6B7280",
-                mb: 3,
-                fontSize: 14,
-              }}
-            >
-              Sign in to your dashboard
-            </Typography>
-
-            <Box component="form" onSubmit={handleSubmit}>
-              <Stack spacing={2}>
+            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2.4 }}>
+              <Stack spacing={1.8}>
                 <TextField
                   fullWidth
                   size="small"
@@ -280,19 +306,13 @@ export default function LoginPage() {
                   value={form.email}
                   onChange={handleChange("email")}
                   type="email"
+                  sx={fieldSx}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <EmailOutlined sx={{ fontSize: 18 }} />
+                        <EmailOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
                       </InputAdornment>
                     ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 1,
-                      backgroundColor: "#FAFAFA",
-                      height: 46,
-                    },
                   }}
                 />
 
@@ -304,10 +324,11 @@ export default function LoginPage() {
                   value={form.password}
                   onChange={handleChange("password")}
                   type={showPassword ? "text" : "password"}
+                  sx={fieldSx}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <LockOutlined sx={{ fontSize: 18 }} />
+                        <LockOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
                       </InputAdornment>
                     ),
                     endAdornment: (
@@ -316,22 +337,16 @@ export default function LoginPage() {
                           onClick={() => setShowPassword((prev) => !prev)}
                           edge="end"
                           size="small"
+                          sx={{ color: "#A39D96" }}
                         >
                           {showPassword ? (
-                            <VisibilityOff sx={{ fontSize: 18 }} />
+                            <VisibilityOff sx={{ fontSize: 17 }} />
                           ) : (
-                            <Visibility sx={{ fontSize: 18 }} />
+                            <Visibility sx={{ fontSize: 17 }} />
                           )}
                         </IconButton>
                       </InputAdornment>
                     ),
-                  }}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 1,
-                      backgroundColor: "#FAFAFA",
-                      height: 46,
-                    },
                   }}
                 />
 
@@ -347,14 +362,15 @@ export default function LoginPage() {
                         size="small"
                         checked={form.rememberMe}
                         onChange={handleChange("rememberMe")}
+                        sx={{ color: "#C8B8AC" }}
                       />
                     }
                     label="Remember me"
                     sx={{
                       m: 0,
                       "& .MuiFormControlLabel-label": {
-                        fontSize: 13,
-                        color: "#6B7280",
+                        fontSize: 12.5,
+                        color: "#8F8A84",
                       },
                     }}
                   />
@@ -364,9 +380,9 @@ export default function LoginPage() {
                     type="button"
                     underline="none"
                     sx={{
-                      color: "#4F46E5",
+                      color: "#4F37F4",
                       fontWeight: 700,
-                      fontSize: 13,
+                      fontSize: 12.5,
                       cursor: "pointer",
                     }}
                   >
@@ -378,8 +394,8 @@ export default function LoginPage() {
                   <Alert
                     severity="error"
                     sx={{
-                      borderRadius: 1.5,
-                      fontSize: 13,
+                      borderRadius: 1,
+                      fontSize: 12.5,
                     }}
                   >
                     {error}
@@ -392,26 +408,31 @@ export default function LoginPage() {
                   variant="contained"
                   disabled={loading}
                   sx={{
-                    mt: 0.5,
-                    py: 1.2,
-                    minHeight: 46,
-                    fontSize: 14,
-                    fontWeight: 800,
+                    mt: 0.2,
+                    py: 1.15,
+                    minHeight: 44,
+                    fontSize: 13,
+                    fontWeight: 700,
                     borderRadius: 1,
-                    boxShadow: "0 8px 20px rgba(79, 70, 229, 0.24)",
+                    bgcolor: "#4F37F4",
+                    boxShadow: "0 10px 24px rgba(79, 55, 244, 0.24)",
+                    "&:hover": {
+                      bgcolor: "#452FE0",
+                      boxShadow: "0 10px 24px rgba(69, 47, 224, 0.26)",
+                    },
                   }}
                 >
                   {loading ? "Signing In..." : "Sign In"}
                 </Button>
 
-                <Box sx={{ pt: 1 }}>
+                <Box sx={{ pt: 0.85 }}>
                   <Typography
                     align="center"
                     sx={{
-                      fontSize: 11,
-                      letterSpacing: 1,
+                      fontSize: 10.5,
+                      letterSpacing: "0.1em",
                       fontWeight: 800,
-                      color: "#9CA3AF",
+                      color: "#A39D96",
                     }}
                   >
                     SECURED ACCESS
@@ -419,34 +440,34 @@ export default function LoginPage() {
 
                   <Box
                     sx={{
-                      mt: 1.5,
+                      mt: 1.3,
                       display: "flex",
-                      gap: 1.25,
+                      gap: 1,
                       alignItems: "flex-start",
-                      bgcolor: "#F5F7FF",
-                      borderRadius: 1.5,
-                      p: 1.75,
+                      bgcolor: "#F6F7FF",
+                      borderRadius: 1,
+                      p: 1.45,
+                      border: "1px solid #E8EBFF",
                     }}
                   >
                     <ShieldOutlined
-                      sx={{ color: "#4F46E5", mt: "2px", fontSize: 18 }}
+                      sx={{ color: "#5B5BFF", mt: "2px", fontSize: 17 }}
                     />
                     <Typography
                       sx={{
-                        fontSize: 13,
+                        fontSize: 12,
                         lineHeight: 1.6,
-                        color: "#5B5F9B",
+                        color: "#6D6EE6",
                       }}
                     >
-                      This portal is restricted to authorized users. All login
-                      activity is monitored and logged.
+                      This portal is restricted to authorized users. All login activity is monitored and logged.
                     </Typography>
                   </Box>
                 </Box>
 
                 <Typography
                   align="center"
-                  sx={{ pt: 0.5, fontSize: 12, color: "#9CA3AF" }}
+                  sx={{ pt: 0.25, fontSize: 11.5, color: "#B0AAA4" }}
                 >
                   © 2026 FieldWork Cam. All rights reserved.
                 </Typography>
@@ -465,15 +486,15 @@ function FeatureChip({ icon, label }) {
       sx={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 0.8,
-        px: 1.35,
-        py: 0.8,
+        gap: 0.75,
+        px: 1.25,
+        py: 0.75,
         borderRadius: 999,
-        backgroundColor: "rgba(255,255,255,0.14)",
+        backgroundColor: "rgba(255,255,255,0.10)",
         border: "1px solid rgba(255,255,255,0.18)",
         color: "#fff",
         backdropFilter: "blur(8px)",
-        fontSize: 12,
+        fontSize: 11.5,
         fontWeight: 600,
       }}
     >
@@ -485,11 +506,11 @@ function FeatureChip({ icon, label }) {
 
 function StatItem({ value, label }) {
   return (
-    <Box sx={{ minWidth: 110 }}>
+    <Box sx={{ minWidth: 120 }}>
       <Typography
         sx={{
-          fontSize: 28,
-          fontWeight: 900,
+          fontSize: 26,
+          fontWeight: 800,
           lineHeight: 1,
           color: "#fff",
         }}
@@ -498,9 +519,9 @@ function StatItem({ value, label }) {
       </Typography>
       <Typography
         sx={{
-          mt: 0.8,
-          fontSize: 12.5,
-          color: "rgba(255,255,255,0.8)",
+          mt: 0.75,
+          fontSize: 12,
+          color: "rgba(255,255,255,0.78)",
         }}
       >
         {label}
@@ -508,3 +529,28 @@ function StatItem({ value, label }) {
     </Box>
   );
 }
+
+const fieldSx = {
+  "& .MuiInputLabel-root": {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontWeight: 500,
+  },
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 1,
+    backgroundColor: "#FFFFFF",
+    minHeight: 44,
+    fontSize: 12.5,
+    color: "#374151",
+    "& fieldset": {
+      borderColor: "#E7E0DA",
+    },
+    "&:hover fieldset": {
+      borderColor: "#DDD4CC",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "#D0C0B5",
+      borderWidth: "1px",
+    },
+  },
+};

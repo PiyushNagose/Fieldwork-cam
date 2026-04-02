@@ -35,6 +35,18 @@ const getProjectPhotos = async (projectId, authHeader) => {
   return res.data?.data || [];
 };
 
+const updateProjectStatus = async (projectId, status, authHeader) => {
+  await axios.patch(
+    `${env.PROJECT_SERVICE_URL}/projects/${projectId}/status`,
+    { status },
+    {
+      headers: {
+        authorization: authHeader,
+      },
+    }
+  );
+};
+
 const createSubmissionService = async (authUserId, payload, authHeader) => {
   const existing = await findSubmissionByProjectId(payload.projectId);
   if (existing) {
@@ -87,6 +99,8 @@ const createSubmissionService = async (authUserId, payload, authHeader) => {
     ],
   });
 
+  await updateProjectStatus(payload.projectId, "Submitted", authHeader);
+
   return submission;
 };
 
@@ -113,7 +127,8 @@ const getSubmissionByProjectService = async (projectId) => {
 const reviewSubmissionService = async (
   authUserId,
   submissionId,
-  payload
+  payload,
+  authHeader
 ) => {
   const submission = await findSubmissionById(submissionId);
 
@@ -121,17 +136,21 @@ const reviewSubmissionService = async (
     throw new ApiError("Submission not found", 404);
   }
 
+  const nextStatus = payload.decision;
+
   const updated = await updateSubmissionById(submissionId, {
-    status: payload.decision,
+    status: nextStatus,
     adminComments: payload.adminComments || "",
     reviewedByAuthUserId: authUserId,
     reviewedAt: new Date(),
   });
 
+  await updateProjectStatus(submission.projectId, nextStatus, authHeader);
+
   return pushTimelineEvent(updated._id, {
-    type: payload.decision === "Approved" ? "APPROVED" : "REJECTED",
+    type: nextStatus === "Approved" ? "APPROVED" : "REJECTED",
     message:
-      payload.decision === "Approved"
+      nextStatus === "Approved"
         ? "Submission approved by admin"
         : "Submission rejected by admin",
     actorAuthUserId: authUserId,
@@ -142,7 +161,8 @@ const reviewSubmissionService = async (
 const requestRetakeService = async (
   authUserId,
   submissionId,
-  payload
+  payload,
+  authHeader
 ) => {
   const submission = await findSubmissionById(submissionId);
 
@@ -156,6 +176,12 @@ const requestRetakeService = async (
     reviewedByAuthUserId: authUserId,
     reviewedAt: new Date(),
   });
+
+  await updateProjectStatus(
+    submission.projectId,
+    "Retake Requested",
+    authHeader
+  );
 
   return pushTimelineEvent(updated._id, {
     type: "RETAKE_REQUESTED",

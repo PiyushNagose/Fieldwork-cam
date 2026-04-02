@@ -11,6 +11,23 @@ const createProjectValidator = [
     .withMessage("Assigned vendor auth user id is required"),
 ];
 
+const updateProjectStatusValidator = [
+  body("status")
+    .notEmpty()
+    .withMessage("Status is required")
+    .isIn([
+      "New",
+      "In Progress",
+      "Submitted",
+      "Approved",
+      "Completed",
+      "Rejected",
+      "Retake Requested",
+    ])
+    .withMessage("Invalid project status"),
+];
+
 module.exports = {
   createProjectValidator,
+  updateProjectStatusValidator,
 };

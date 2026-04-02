@@ -24,6 +24,11 @@ const vendorProfileSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    website: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     address: {
       type: String,
       trim: true,

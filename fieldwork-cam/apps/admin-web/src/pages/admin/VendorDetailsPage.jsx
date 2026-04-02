@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -25,6 +25,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { getVendorByIdApi } from "../../api/vendor.api";
+import { getProjectsApi } from "../../api/project.api";
 
 // --- Global Styles ---
 const cardBaseSx = {
@@ -40,16 +41,22 @@ export default function VendorDetailsPage() {
   const { vendorId } = useParams();
 
   const [vendor, setVendor] = useState(null);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const fetchVendor = async () => {
+  const fetchVendor = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      const res = await getVendorByIdApi(vendorId);
-      const data = res?.data || res || null;
-      setVendor(data);
+      const [vendorRes, projectsRes] = await Promise.all([
+        getVendorByIdApi(vendorId),
+        getProjectsApi(),
+      ]);
+      const vendorData = vendorRes?.data || vendorRes || null;
+      const projectData = projectsRes?.data || projectsRes || [];
+      setVendor(vendorData);
+      setProjects(Array.isArray(projectData) ? projectData : []);
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -57,23 +64,36 @@ export default function VendorDetailsPage() {
           "Failed to load vendor details",
       );
       setVendor(null);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [vendorId]);
 
   useEffect(() => {
     if (vendorId) fetchVendor();
-  }, [vendorId]);
+  }, [vendorId, fetchVendor]);
 
   const stats = useMemo(
-    () => ({
-      totalProjects: vendor?.totalProjects ?? 0,
-      completedProjects: vendor?.completedProjects ?? 0,
-      activeProjects: vendor?.activeProjects ?? 0,
-      rating: vendor?.rating ?? 0,
-    }),
-    [vendor],
+    () => {
+      const vendorProjects = projects.filter(
+        (project) => project.assignedVendorAuthUserId === vendor?.authUserId,
+      );
+
+      return {
+        totalProjects: vendorProjects.length,
+        completedProjects: vendorProjects.filter((project) =>
+          ["Approved", "Completed"].includes(project.status),
+        ).length,
+        activeProjects: vendorProjects.filter((project) =>
+          ["New", "In Progress", "Submitted", "Retake Requested"].includes(
+            project.status,
+          ),
+        ).length,
+        rating: typeof vendor?.rating === "number" && vendor.rating > 0 ? vendor.rating : "-",
+      };
+    },
+    [projects, vendor],
   );
 
   const statusChip = (status = "") => {

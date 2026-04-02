@@ -2,7 +2,10 @@ const express = require("express");
 const authMiddleware = require("../middlewares/auth.middleware");
 const validateMiddleware = require("../middlewares/validate.middleware");
 const projectController = require("../controllers/project.controller");
-const { createProjectValidator } = require("../validators/project.validator");
+const {
+  createProjectValidator,
+  updateProjectStatusValidator,
+} = require("../validators/project.validator");
 const { addProjectNoteValidator } = require("../validators/note.validator");
 const {
   assignVendorValidator,
@@ -49,6 +52,14 @@ router.post(
   assignStaffValidator,
   validateMiddleware,
   projectController.assignStaff,
+);
+
+router.patch(
+  "/:projectId/status",
+  authMiddleware,
+  updateProjectStatusValidator,
+  validateMiddleware,
+  projectController.updateProjectStatus,
 );
 
 module.exports = router;

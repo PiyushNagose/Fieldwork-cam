@@ -1,29 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Alert,
+  Avatar,
   Box,
   Button,
   Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Stack,
   Tab,
   Tabs,
   TextField,
   Typography,
-  Avatar,
-  MenuItem,
-  Alert,
 } from "@mui/material";
 import {
-  CloseOutlined,
-  PersonOutlineOutlined,
-  EmailOutlined,
-  PhoneOutlined,
-  LocationOnOutlined,
-  PublicOutlined,
-  BusinessCenterOutlined,
   BadgeOutlined,
+  BusinessCenterOutlined,
+  CloseOutlined,
+  EmailOutlined,
+  LocationOnOutlined,
+  PersonOutlineOutlined,
+  PhoneOutlined,
+  PublicOutlined,
 } from "@mui/icons-material";
 import { updateAdminProfileApi } from "../../api/admin.api";
 
@@ -57,29 +57,28 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
     bio: "",
     profilePhotoUrl: "",
   });
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!profile) return;
 
-    const fullName = profile?.user?.fullName || "";
+    const user = profile?.user || profile || {};
+    const meta = profile?.meta || user?.meta || {};
+    const fullName = user?.fullName || "";
     const parts = fullName.trim().split(" ").filter(Boolean);
 
     setForm({
-      firstName: profile?.meta?.firstName || parts[0] || "",
-      lastName:
-        profile?.meta?.lastName ||
-        (parts.length > 1 ? parts.slice(1).join(" ") : ""),
-      email: profile?.user?.email || "",
-      phone: profile?.user?.phone || "",
-      location: profile?.user?.location || profile?.meta?.location || "",
-      timezone: profile?.user?.timezone || profile?.meta?.timezone || "",
-      jobTitle: profile?.meta?.jobTitle || profile?.user?.jobTitle || "",
-      department: profile?.user?.department || profile?.meta?.department || "",
-      bio: profile?.meta?.bio || profile?.user?.bio || "",
-      profilePhotoUrl:
-        profile?.user?.profilePhotoUrl || profile?.meta?.profilePhotoUrl || "",
+      firstName: meta?.firstName || parts[0] || "",
+      lastName: meta?.lastName || (parts.length > 1 ? parts.slice(1).join(" ") : ""),
+      email: user?.email || "",
+      phone: user?.phone || "",
+      location: user?.location || meta?.location || "",
+      timezone: user?.timezone || meta?.timezone || "",
+      jobTitle: user?.jobTitle || meta?.jobTitle || "",
+      department: user?.department || meta?.department || "",
+      bio: user?.bio || meta?.bio || "",
+      profilePhotoUrl: user?.profilePhotoUrl || meta?.profilePhotoUrl || "",
     });
   }, [profile, open]);
 
@@ -92,15 +91,12 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
   }, [form.firstName, form.lastName]);
 
   const handleChange = (key) => (event) => {
-    setForm((prev) => ({
-      ...prev,
-      [key]: event.target.value,
-    }));
+    setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
   const handleSave = async () => {
     try {
-      setLoading(true);
+      setSaving(true);
       setError("");
 
       const payload = {
@@ -125,8 +121,8 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
         },
       };
 
-      const res = await updateAdminProfileApi(payload);
-      const data = res?.data || res;
+      const response = await updateAdminProfileApi(payload);
+      const data = response?.data || response;
 
       onSaved?.(data);
       onClose?.();
@@ -137,7 +133,7 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
           "Failed to update profile",
       );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -146,74 +142,68 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth="md"
+      maxWidth="sm"
       PaperProps={{
         sx: {
           borderRadius: 3,
           overflow: "hidden",
+          maxWidth: 540,
         },
       }}
     >
       <DialogTitle
         sx={{
-          px: 3,
-          py: 2.5,
+          px: 2.5,
+          py: 2,
           borderBottom: "1px solid #F0EBE6",
         }}
       >
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="flex-start"
-        >
+        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
           <Box>
-            <Typography
-              sx={{ fontSize: 22, fontWeight: 700, color: "#111827" }}
-            >
+            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#1F2937" }}>
               Edit Profile
             </Typography>
-            <Typography sx={{ mt: 0.5, fontSize: 14, color: "#9CA3AF" }}>
+            <Typography sx={{ mt: 0.45, fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}>
               Update your personal information and preferences.
             </Typography>
           </Box>
 
-          <IconButton onClick={onClose}>
-            <CloseOutlined />
+          <IconButton onClick={onClose} sx={{ color: "#9CA3AF" }}>
+            <CloseOutlined sx={{ fontSize: 18 }} />
           </IconButton>
         </Stack>
       </DialogTitle>
 
       <DialogContent sx={{ p: 0 }}>
-        <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid #F0EBE6" }}>
-          <Stack direction="row" spacing={2} alignItems="center">
+        <Box sx={{ px: 2.5, py: 2 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
             <Avatar
               src={form.profilePhotoUrl || ""}
               sx={{
-                width: 96,
-                height: 96,
-                borderRadius: 2,
+                width: 52,
+                height: 52,
+                borderRadius: 1.3,
                 bgcolor: "#CBB8AD",
-                fontSize: 28,
+                fontSize: 18,
                 fontWeight: 800,
+                boxShadow: "0 8px 18px rgba(31,41,55,0.08)",
               }}
             >
               {!form.profilePhotoUrl ? avatarText : null}
             </Avatar>
 
             <Box>
-              <Typography
-                sx={{ fontSize: 16, fontWeight: 700, color: "#111827" }}
-              >
+              <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>
                 Profile Photo
               </Typography>
-              <Typography sx={{ mt: 0.3, fontSize: 13, color: "#9CA3AF" }}>
+              <Typography sx={{ mt: 0.2, fontSize: 11.25, color: "#A39D96" }}>
                 JPG or PNG. Max 5MB.
               </Typography>
               <Typography
                 sx={{
-                  mt: 1.1,
-                  fontSize: 14,
-                  fontWeight: 700,
+                  mt: 0.8,
+                  fontSize: 11.5,
+                  fontWeight: 600,
                   color: "#D88B72",
                 }}
               >
@@ -226,25 +216,26 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
             value={tab}
             onChange={(_, value) => setTab(value)}
             sx={{
-              mt: 3,
-              minHeight: 42,
-              "& .MuiTabs-indicator": {
-                display: "none",
-              },
+              mt: 1.8,
+              minHeight: 38,
+              bgcolor: "#F7F4F1",
+              p: 0.35,
+              borderRadius: 1,
+              "& .MuiTabs-indicator": { display: "none" },
               "& .MuiTab-root": {
-                minHeight: 42,
-                borderRadius: 1.5,
+                minHeight: 30,
+                minWidth: 0,
+                flex: 1,
                 textTransform: "none",
-                fontWeight: 700,
-                color: "#6B7280",
-                bgcolor: "#F7F4F1",
-                mr: 1.5,
-                minWidth: 180,
+                fontWeight: 600,
+                fontSize: 11,
+                borderRadius: 0.9,
+                color: "#8F8A84",
               },
               "& .Mui-selected": {
-                bgcolor: "#fff",
-                color: "#111827 !important",
-                border: "1px solid #EDE7E1",
+                bgcolor: "#FFFFFF",
+                color: "#1F2937 !important",
+                boxShadow: "0 1px 2px rgba(31,41,55,0.06)",
               },
             }}
           >
@@ -253,131 +244,53 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
           </Tabs>
         </Box>
 
-        <Box sx={{ px: 3, py: 3 }}>
+        <Box sx={{ px: 2.5, pb: 2.3 }}>
           {error ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 1.5, borderRadius: 1 }}>
               {error}
             </Alert>
           ) : null}
 
           {tab === 0 ? (
-            <Stack spacing={2.2}>
+            <Stack spacing={1.5}>
               <Box
                 sx={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gap: 2,
+                  gap: 1.35,
                 }}
               >
-                <TextField
+                <ProfileField
                   label="First Name"
                   value={form.firstName}
                   onChange={handleChange("firstName")}
-                  fullWidth
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <Box
-                        sx={{
-                          mr: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          color: "#B0B5BE",
-                        }}
-                      >
-                        <PersonOutlineOutlined sx={{ fontSize: 18 }} />
-                      </Box>
-                    ),
-                  }}
+                  icon={<PersonOutlineOutlined sx={{ fontSize: 16 }} />}
                 />
-
-                <TextField
+                <ProfileField
                   label="Last Name"
                   value={form.lastName}
                   onChange={handleChange("lastName")}
-                  fullWidth
-                  size="small"
-                  InputProps={{
-                    startAdornment: (
-                      <Box
-                        sx={{
-                          mr: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          color: "#B0B5BE",
-                        }}
-                      >
-                        <PersonOutlineOutlined sx={{ fontSize: 18 }} />
-                      </Box>
-                    ),
-                  }}
+                  icon={<PersonOutlineOutlined sx={{ fontSize: 16 }} />}
                 />
               </Box>
 
-              <TextField
+              <ProfileField
                 label="Email Address"
                 value={form.email}
                 onChange={handleChange("email")}
-                fullWidth
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#B0B5BE",
-                      }}
-                    >
-                      <EmailOutlined sx={{ fontSize: 18 }} />
-                    </Box>
-                  ),
-                }}
+                icon={<EmailOutlined sx={{ fontSize: 16 }} />}
               />
-
-              <TextField
+              <ProfileField
                 label="Phone Number"
                 value={form.phone}
                 onChange={handleChange("phone")}
-                fullWidth
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#B0B5BE",
-                      }}
-                    >
-                      <PhoneOutlined sx={{ fontSize: 18 }} />
-                    </Box>
-                  ),
-                }}
+                icon={<PhoneOutlined sx={{ fontSize: 16 }} />}
               />
-
-              <TextField
+              <ProfileField
                 label="Location"
                 value={form.location}
                 onChange={handleChange("location")}
-                fullWidth
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#B0B5BE",
-                      }}
-                    >
-                      <LocationOnOutlined sx={{ fontSize: 18 }} />
-                    </Box>
-                  ),
-                }}
+                icon={<LocationOnOutlined sx={{ fontSize: 16 }} />}
               />
 
               <TextField
@@ -387,17 +300,11 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
                 onChange={handleChange("timezone")}
                 fullWidth
                 size="small"
+                sx={fieldSx}
                 InputProps={{
                   startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#B0B5BE",
-                      }}
-                    >
-                      <PublicOutlined sx={{ fontSize: 18 }} />
+                    <Box sx={startAdornmentSx}>
+                      <PublicOutlined sx={{ fontSize: 16 }} />
                     </Box>
                   ),
                 }}
@@ -410,27 +317,12 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
               </TextField>
             </Stack>
           ) : (
-            <Stack spacing={2.2}>
-              <TextField
+            <Stack spacing={1.5}>
+              <ProfileField
                 label="Job Title"
                 value={form.jobTitle}
                 onChange={handleChange("jobTitle")}
-                fullWidth
-                size="small"
-                InputProps={{
-                  startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#B0B5BE",
-                      }}
-                    >
-                      <BadgeOutlined sx={{ fontSize: 18 }} />
-                    </Box>
-                  ),
-                }}
+                icon={<BadgeOutlined sx={{ fontSize: 16 }} />}
               />
 
               <TextField
@@ -440,17 +332,11 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
                 onChange={handleChange("department")}
                 fullWidth
                 size="small"
+                sx={fieldSx}
                 InputProps={{
                   startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#B0B5BE",
-                      }}
-                    >
-                      <BusinessCenterOutlined sx={{ fontSize: 18 }} />
+                    <Box sx={startAdornmentSx}>
+                      <BusinessCenterOutlined sx={{ fontSize: 16 }} />
                     </Box>
                   ),
                 }}
@@ -468,18 +354,30 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
                 onChange={handleChange("bio")}
                 fullWidth
                 multiline
-                minRows={6}
+                minRows={5}
                 placeholder="Tell us about yourself..."
+                sx={multilineFieldSx}
+                helperText={`${Math.min(form.bio.length, 200)}/200`}
+                inputProps={{ maxLength: 200 }}
+                FormHelperTextProps={{
+                  sx: {
+                    textAlign: "right",
+                    color: "#B0B5BE",
+                    fontSize: 10.5,
+                    mt: 0.5,
+                  },
+                }}
               />
 
               <Box>
                 <Typography
                   sx={{
-                    fontSize: 11,
-                    color: "#9CA3AF",
+                    fontSize: 10.5,
+                    color: "#A39D96",
                     textTransform: "uppercase",
                     fontWeight: 700,
-                    mb: 1,
+                    mb: 0.8,
+                    letterSpacing: "0.08em",
                   }}
                 >
                   Preview
@@ -488,14 +386,12 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
                 <Box
                   sx={{
                     border: "1px solid #EDE7E1",
-                    borderRadius: 1.5,
-                    p: 2,
+                    borderRadius: 1,
+                    p: 1.5,
                     bgcolor: "#FCFAF8",
                   }}
                 >
-                  <Typography
-                    sx={{ fontSize: 14, color: "#6B7280", lineHeight: 1.7 }}
-                  >
+                  <Typography sx={{ fontSize: 12.5, color: "#6B7280", lineHeight: 1.7 }}>
                     {form.bio || "No bio preview available."}
                   </Typography>
                 </Box>
@@ -503,39 +399,18 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
             </Stack>
           )}
 
-          <Stack
-            direction="row"
-            justifyContent="flex-end"
-            spacing={1.5}
-            sx={{ mt: 3 }}
-          >
-            <Button
-              variant="outlined"
-              onClick={onClose}
-              sx={{
-                minWidth: 120,
-                borderRadius: 1.5,
-                borderColor: "#E8E1DA",
-                color: "#6B7280",
-              }}
-            >
+          <Stack direction="row" justifyContent="flex-end" spacing={1.2} sx={{ mt: 2 }}>
+            <Button variant="outlined" onClick={onClose} sx={cancelButtonSx}>
               Cancel
             </Button>
 
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={loading}
-              sx={{
-                minWidth: 170,
-                borderRadius: 1.5,
-                bgcolor: "#EFD9CE",
-                color: "#111827",
-                boxShadow: "none",
-                "&:hover": { bgcolor: "#E4CEC3", boxShadow: "none" },
-              }}
+              disabled={saving}
+              sx={saveButtonSx}
             >
-              {loading ? "Saving..." : "Save Changes"}
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </Stack>
         </Box>
@@ -543,3 +418,100 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
     </Dialog>
   );
 }
+
+function ProfileField({ label, value, onChange, icon }) {
+  return (
+    <TextField
+      label={label}
+      value={value}
+      onChange={onChange}
+      fullWidth
+      size="small"
+      sx={fieldSx}
+      InputProps={{
+        startAdornment: <Box sx={startAdornmentSx}>{icon}</Box>,
+      }}
+    />
+  );
+}
+
+const fieldSx = {
+  "& .MuiInputLabel-root": {
+    fontSize: 11.5,
+    color: "#9CA3AF",
+    fontWeight: 500,
+  },
+  "& .MuiInputBase-root": {
+    minHeight: 40,
+    borderRadius: 1,
+    bgcolor: "#FBF8F6",
+    fontSize: 12.5,
+    color: "#374151",
+    fontWeight: 500,
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#E6DDD7",
+  },
+  "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#DDD4CC",
+  },
+  "& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#D5C6BA",
+    borderWidth: "1px",
+  },
+};
+
+const multilineFieldSx = {
+  ...fieldSx,
+  "& .MuiInputBase-root": {
+    minHeight: 126,
+    alignItems: "flex-start",
+    borderRadius: 1,
+    bgcolor: "#FBF8F6",
+    fontSize: 12.5,
+    color: "#374151",
+    fontWeight: 500,
+  },
+};
+
+const startAdornmentSx = {
+  mr: 1,
+  display: "flex",
+  alignItems: "center",
+  color: "#B0B5BE",
+};
+
+const cancelButtonSx = {
+  minWidth: 92,
+  borderRadius: 1,
+  borderColor: "#E8E1DA",
+  color: "#6B7280",
+  textTransform: "none",
+  fontSize: 12,
+  fontWeight: 600,
+  boxShadow: "none",
+  "&:hover": {
+    borderColor: "#DED3CB",
+    bgcolor: "#FCFAF8",
+    boxShadow: "none",
+  },
+};
+
+const saveButtonSx = {
+  minWidth: 132,
+  borderRadius: 1,
+  bgcolor: "#D8BAA9",
+  color: "#1F2937",
+  textTransform: "none",
+  fontSize: 12,
+  fontWeight: 700,
+  boxShadow: "none",
+  "&:hover": {
+    bgcolor: "#CBA895",
+    boxShadow: "none",
+  },
+  "&.Mui-disabled": {
+    bgcolor: "#E6DDD8",
+    color: "#948C87",
+  },
+};

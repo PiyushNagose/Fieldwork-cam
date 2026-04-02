@@ -115,4 +115,21 @@ router.post(
   }),
 );
 
+router.patch(
+  "/:projectId/status",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "patch",
+      url: `${SERVICES.PROJECT}/projects/${req.params.projectId}/status`,
+      data: req.body,
+      headers: {
+        authorization: req.headers.authorization,
+      },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
 module.exports = router;

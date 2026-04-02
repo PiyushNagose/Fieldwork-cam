@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const ticketSchema = new mongoose.Schema(
   {
+    ticketId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
     vendorAuthUserId: {
       type: String,
       required: true,
@@ -18,13 +24,24 @@ const ticketSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["Photo Issue", "Payment", "Project", "Other"],
+      enum: [
+        "TECHNICAL_ISSUE",
+        "BILLING",
+        "ACCOUNT",
+        "FEATURE_REQUEST",
+        "GENERAL",
+      ],
       required: true,
+    },
+    priority: {
+      type: String,
+      enum: ["LOW", "MEDIUM", "HIGH"],
+      default: "MEDIUM",
     },
     status: {
       type: String,
-      enum: ["Open", "In Progress", "Resolved"],
-      default: "Open",
+      enum: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"],
+      default: "OPEN",
     },
   },
   { timestamps: true },

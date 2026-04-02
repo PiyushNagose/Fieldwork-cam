@@ -7,6 +7,7 @@ const router = express.Router();
 router.get("/", authMiddleware, controller.getNotifications);
 router.patch("/:id/read", authMiddleware, controller.markRead);
 router.patch("/read-all", authMiddleware, controller.markAllRead);
+router.delete("/clear-all", authMiddleware, controller.clearAll);
 router.get("/unread-count", authMiddleware, controller.unreadCount);
 
 module.exports = router;

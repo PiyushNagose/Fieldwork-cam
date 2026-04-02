@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -15,31 +15,42 @@ import {
 import {
   AddOutlined,
   ApartmentOutlined,
-  CheckCircleOutlineOutlined,
-  BarChartOutlined,
+  ArrowOutwardOutlined,
   AssignmentTurnedInOutlined,
-  SearchOutlined,
-  LocationOnOutlined,
+  BarChartOutlined,
   CalendarMonthOutlined,
+  CheckCircleOutlineOutlined,
+  LocationOnOutlined,
+  SearchOutlined,
   StarOutlined,
   VisibilityOutlined,
   WorkOutlineOutlined,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getVendorsApi } from "../../api/vendor.api";
+import { getProjectsApi } from "../../api/project.api";
+import AssignVendorProjectDialog from "./AssignVendorProjectDialog";
 
 const STATUS_FILTERS = ["ALL", "ACTIVE", "SUSPENDED"];
+const COMPLETED_STATUSES = ["Approved", "Completed"];
+const ACTIVE_STATUSES = ["New", "In Progress", "Submitted", "Retake Requested"];
+const REVIEWABLE_STATUSES = ["Submitted", "Approved", "Completed", "Rejected"];
 
 export default function VendorsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [vendors, setVendors] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [assigningVendor, setAssigningVendor] = useState(null);
 
-  const fetchVendors = async () => {
+  const successState = location.state?.vendorCreated || null;
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -49,9 +60,16 @@ export default function VendorsPage() {
         params.status = statusFilter;
       }
 
-      const res = await getVendorsApi(params);
-      const data = res?.data || res || [];
-      setVendors(Array.isArray(data) ? data : []);
+      const [vendorsRes, projectsRes] = await Promise.all([
+        getVendorsApi(params),
+        getProjectsApi(),
+      ]);
+
+      const vendorData = vendorsRes?.data || vendorsRes || [];
+      const projectData = projectsRes?.data || projectsRes || [];
+
+      setVendors(Array.isArray(vendorData) ? vendorData : []);
+      setProjects(Array.isArray(projectData) ? projectData : []);
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -59,19 +77,86 @@ export default function VendorsPage() {
           "Failed to load vendors",
       );
       setVendors([]);
+      setProjects([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchVendors();
-  }, [statusFilter]);
+    fetchData();
+  }, [fetchData]);
+
+  const vendorsWithMetrics = useMemo(() => {
+    return vendors.map((vendor) => {
+      const vendorProjects = projects.filter(
+        (project) => project.assignedVendorAuthUserId === vendor.authUserId,
+      );
+
+      const completedProjects = vendorProjects.filter((project) =>
+        COMPLETED_STATUSES.includes(project.status),
+      ).length;
+      const activeProjects = vendorProjects.filter((project) =>
+        ACTIVE_STATUSES.includes(project.status),
+      ).length;
+      const reviewableCount = vendorProjects.filter((project) =>
+        REVIEWABLE_STATUSES.includes(project.status),
+      ).length;
+      const approvalCount = vendorProjects.filter((project) =>
+        COMPLETED_STATUSES.includes(project.status),
+      ).length;
+
+      const approvalRate = reviewableCount
+        ? Math.round((approvalCount / reviewableCount) * 100)
+        : 0;
+
+      const currentMonthCount = vendorProjects.filter(
+        (project) => monthKey(project.createdAt) === monthKey(new Date()),
+      ).length;
+      const previousMonthCount = vendorProjects.filter(
+        (project) =>
+          monthKey(project.createdAt) === previousMonthKey(monthKey(new Date())),
+      ).length;
+
+      const monthlyGrowth =
+        previousMonthCount === 0
+          ? currentMonthCount > 0
+            ? 100
+            : 0
+          : Math.round(
+              ((currentMonthCount - previousMonthCount) / previousMonthCount) * 100,
+            );
+
+      const averageProgress = vendorProjects.length
+        ? Math.round(
+            vendorProjects.reduce(
+              (sum, project) => sum + Number(project.progress || 0),
+              0,
+            ) / vendorProjects.length,
+          )
+        : 0;
+
+      return {
+        ...vendor,
+        completedProjects,
+        activeProjects,
+        totalProjects: vendorProjects.length,
+        approvalRate,
+        monthlyGrowth,
+        rating:
+          typeof vendor.rating === "number" && vendor.rating > 0
+            ? vendor.rating
+            : null,
+        averageProgress,
+      };
+    });
+  }, [vendors, projects]);
 
   const filteredVendors = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return vendors;
-    return vendors.filter((item) =>
+    if (!query) return vendorsWithMetrics;
+
+    return vendorsWithMetrics.filter((item) =>
       [
         item.companyName,
         item.fullName,
@@ -86,65 +171,28 @@ export default function VendorsPage() {
         .toLowerCase()
         .includes(query),
     );
-  }, [vendors, search]);
+  }, [vendorsWithMetrics, search]);
 
   const stats = useMemo(() => {
-    const totalVendors = vendors.length;
-    const activeVendors = vendors.filter((v) => v.status === "ACTIVE").length;
-    const avgApprovalRate = vendors.length
+    const totalVendors = vendorsWithMetrics.length;
+    const activeVendors = vendorsWithMetrics.filter(
+      (vendor) => vendor.status === "ACTIVE",
+    ).length;
+    const avgApprovalRate = vendorsWithMetrics.length
       ? Math.round(
-          vendors.reduce((sum, v) => sum + Number(v.approvalRate || 0), 0) /
-            vendors.length,
+          vendorsWithMetrics.reduce(
+            (sum, vendor) => sum + Number(vendor.approvalRate || 0),
+            0,
+          ) / vendorsWithMetrics.length,
         )
       : 0;
-    const totalCompleted = vendors.reduce(
-      (sum, v) => sum + Number(v.completedProjects || 0),
+    const totalCompleted = vendorsWithMetrics.reduce(
+      (sum, vendor) => sum + Number(vendor.completedProjects || 0),
       0,
     );
+
     return { totalVendors, activeVendors, avgApprovalRate, totalCompleted };
-  }, [vendors]);
-
-  const statusChip = (status = "") => {
-    const map = {
-      ACTIVE: { bg: "#EAFBF1", color: "#22C55E", label: "Active" },
-      SUSPENDED: { bg: "#FEE2E2", color: "#DC2626", label: "Suspended" },
-      INACTIVE: { bg: "#F3F4F6", color: "#6B7280", label: "Inactive" },
-    };
-    const current = map[status] || {
-      bg: "#F3F4F6",
-      color: "#6B7280",
-      label: status || "—",
-    };
-    return (
-      <Chip
-        label={current.label}
-        size="small"
-        sx={{
-          bgcolor: current.bg,
-          color: current.color,
-          fontWeight: 700,
-          borderRadius: 999,
-          height: 24,
-          fontSize: 11,
-        }}
-      />
-    );
-  };
-
-  const initials = (name = "") => {
-    const parts = name.trim().split(" ").filter(Boolean);
-    if (!parts.length) return "V";
-    if (parts.length === 1) return parts[0][0]?.toUpperCase() || "V";
-    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
-  };
-
-  const avatarColor = (index) => {
-    const colors = [
-      "#D88B72", "#5B8DEF", "#8B5CF6", "#EAB308",
-      "#22C55E", "#9CA3AF", "#3B82F6", "#F87171",
-    ];
-    return colors[index % colors.length];
-  };
+  }, [vendorsWithMetrics]);
 
   return (
     <Box
@@ -155,7 +203,6 @@ export default function VendorsPage() {
         minHeight: "100%",
       }}
     >
-      {/* ── Page header ── */}
       <Typography
         sx={{
           fontSize: 28,
@@ -179,10 +226,24 @@ export default function VendorsPage() {
         Manage vendor relationships and performance.
       </Typography>
 
-      {/* ── Stat cards ── */}
+      {successState ? (
+        <Alert
+          severity={successState.emailDelivery?.sent ? "success" : "warning"}
+          sx={{ mt: 2, borderRadius: 1 }}
+        >
+          {successState.emailDelivery?.sent
+            ? `Vendor created and invite email sent to ${successState.email}.`
+            : `Vendor created. Invite email was not sent automatically${
+                successState.emailDelivery?.reason
+                  ? ` (${successState.emailDelivery.reason})`
+                  : ""
+              }.`}
+        </Alert>
+      ) : null}
+
       <Box
         sx={{
-          mt: 2.25,
+          mt: 2.2,
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr 1fr",
@@ -207,13 +268,14 @@ export default function VendorsPage() {
           value={`${stats.avgApprovalRate}%`}
         />
         <StatCard
-          icon={<AssignmentTurnedInOutlined sx={{ fontSize: 18, color: "#5B8DEF" }} />}
+          icon={
+            <AssignmentTurnedInOutlined sx={{ fontSize: 18, color: "#5B8DEF" }} />
+          }
           label="Total Completed"
           value={stats.totalCompleted}
         />
       </Box>
 
-      {/* ── Search + filters ── */}
       <Stack
         direction={{ xs: "column", lg: "row" }}
         justifyContent="space-between"
@@ -223,7 +285,7 @@ export default function VendorsPage() {
       >
         <OutlinedInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
           placeholder="Search vendors..."
           startAdornment={
             <InputAdornment position="start">
@@ -232,7 +294,7 @@ export default function VendorsPage() {
           }
           sx={{
             flex: 1,
-            maxWidth: { xs: "100%", lg: 400 },
+            maxWidth: { xs: "100%", lg: 420 },
             height: 40,
             bgcolor: "#F5EFEB",
             borderRadius: 1,
@@ -299,7 +361,6 @@ export default function VendorsPage() {
         </Stack>
       </Stack>
 
-      {/* ── Content ── */}
       {loading ? (
         <Stack
           alignItems="center"
@@ -313,7 +374,7 @@ export default function VendorsPage() {
       ) : error ? (
         <Box sx={{ mt: 1.5 }}>
           <Alert severity="error">{error}</Alert>
-          <Button sx={{ mt: 2 }} variant="contained" onClick={fetchVendors}>
+          <Button sx={{ mt: 2 }} variant="contained" onClick={fetchData}>
             Retry
           </Button>
         </Box>
@@ -384,21 +445,28 @@ export default function VendorsPage() {
                       {vendor.companyName || "Unnamed Vendor"}
                     </Typography>
                     <Typography
-                      sx={{ mt: 0.3, fontSize: 12.5, color: "#9CA3AF", fontWeight: 500 }}
+                      sx={{
+                        mt: 0.3,
+                        fontSize: 12.5,
+                        color: "#9CA3AF",
+                        fontWeight: 500,
+                      }}
                     >
-                      {vendor.fullName || vendor.contactName || ""}
+                      {vendor.fullName || vendor.contactName || "-"}
                     </Typography>
 
                     <Stack
                       direction="row"
                       spacing={1.2}
                       alignItems="center"
+                      flexWrap="wrap"
+                      useFlexGap
                       sx={{ mt: 0.75 }}
                     >
                       <Stack direction="row" spacing={0.5} alignItems="center">
                         <LocationOnOutlined sx={{ fontSize: 13, color: "#B0B5BE" }} />
                         <Typography sx={{ fontSize: 12, color: "#9CA3AF" }}>
-                          {vendor.serviceArea || vendor.address || "—"}
+                          {vendor.serviceArea || vendor.address || "-"}
                         </Typography>
                       </Stack>
 
@@ -407,7 +475,7 @@ export default function VendorsPage() {
                         <Typography sx={{ fontSize: 12, color: "#9CA3AF" }}>
                           {vendor.joinedAt
                             ? `Joined ${new Date(vendor.joinedAt).toLocaleDateString()}`
-                            : ""}
+                            : "-"}
                         </Typography>
                       </Stack>
                     </Stack>
@@ -425,9 +493,9 @@ export default function VendorsPage() {
                   gap: 1,
                 }}
               >
-                <MiniMetric value={vendor.completedProjects ?? 0} label="Completed" />
-                <MiniMetric value={`${vendor.approvalRate ?? 0}%`} label="Approval" />
-                <MiniMetric value={vendor.activeProjects ?? 0} label="Active" />
+                <MiniMetric value={vendor.completedProjects} label="Completed" />
+                <MiniMetric value={`${vendor.approvalRate}%`} label="Approval" />
+                <MiniMetric value={vendor.activeProjects} label="Active" />
               </Box>
 
               <Stack
@@ -441,30 +509,28 @@ export default function VendorsPage() {
                   <Typography
                     sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}
                   >
-                    {vendor.rating ?? "—"}
+                    {vendor.rating ?? "-"}
                   </Typography>
                 </Stack>
 
-                {typeof vendor.monthlyGrowth !== "undefined" ? (
-                  <Typography
-                    sx={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: Number(vendor.monthlyGrowth) >= 0 ? "#22C55E" : "#EF4444",
-                    }}
-                  >
-                    {Number(vendor.monthlyGrowth) >= 0 ? "+" : ""}
-                    {vendor.monthlyGrowth}% this month
-                  </Typography>
-                ) : (
-                  <Box />
-                )}
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color:
+                      Number(vendor.monthlyGrowth) >= 0 ? "#22C55E" : "#EF4444",
+                  }}
+                >
+                  {Number(vendor.monthlyGrowth) >= 0 ? "+" : ""}
+                  {vendor.monthlyGrowth}% this month
+                </Typography>
               </Stack>
 
               <Stack
                 direction="row"
                 spacing={0.8}
                 flexWrap="wrap"
+                useFlexGap
                 sx={{ mt: 1.25, minHeight: 24 }}
               >
                 {(vendor.serviceTypes || []).map((item, idx) => (
@@ -489,9 +555,7 @@ export default function VendorsPage() {
                   variant="outlined"
                   startIcon={<VisibilityOutlined sx={{ fontSize: 15 }} />}
                   onClick={() =>
-                    navigate(
-                      `/admin/vendors/${vendor._id || vendor.id || vendor.authUserId}`,
-                    )
+                    navigate(`/admin/vendors/${vendor._id || vendor.id || vendor.authUserId}`)
                   }
                   sx={{
                     borderRadius: 1,
@@ -502,7 +566,11 @@ export default function VendorsPage() {
                     fontSize: 12,
                     fontWeight: 600,
                     boxShadow: "none",
-                    "&:hover": { borderColor: "#DED3CB", bgcolor: "#FCFAF8", boxShadow: "none" },
+                    "&:hover": {
+                      borderColor: "#DED3CB",
+                      bgcolor: "#FCFAF8",
+                      boxShadow: "none",
+                    },
                   }}
                 >
                   View Profile
@@ -512,6 +580,7 @@ export default function VendorsPage() {
                   fullWidth
                   variant="contained"
                   startIcon={<WorkOutlineOutlined sx={{ fontSize: 15 }} />}
+                  onClick={() => setAssigningVendor(vendor)}
                   sx={{
                     borderRadius: 1,
                     bgcolor: "#8D7B72",
@@ -524,11 +593,31 @@ export default function VendorsPage() {
                 >
                   Assign Project
                 </Button>
+
+                <Button
+                  sx={{
+                    minWidth: 36,
+                    width: 36,
+                    borderRadius: 1,
+                    p: 0,
+                    color: "#A4ABB5",
+                    border: "1px solid #E9E1DB",
+                  }}
+                >
+                  <ArrowOutwardOutlined sx={{ fontSize: 17 }} />
+                </Button>
               </Stack>
             </Card>
           ))}
         </Box>
       )}
+
+      <AssignVendorProjectDialog
+        open={Boolean(assigningVendor)}
+        vendor={assigningVendor}
+        onClose={() => setAssigningVendor(null)}
+        onAssigned={fetchData}
+      />
     </Box>
   );
 }
@@ -558,13 +647,17 @@ function StatCard({ icon, label, value }) {
           {icon}
         </Box>
         <Box>
-          <Typography
-            sx={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}
-          >
+          <Typography sx={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}>
             {label}
           </Typography>
           <Typography
-            sx={{ mt: 0.6, fontSize: 22, fontWeight: 700, color: "#1F2937", lineHeight: 1.1 }}
+            sx={{
+              mt: 0.6,
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#1F2937",
+              lineHeight: 1.1,
+            }}
           >
             {value}
           </Typography>
@@ -596,4 +689,65 @@ function MiniMetric({ value, label }) {
       </Typography>
     </Box>
   );
+}
+
+function statusChip(status = "") {
+  const map = {
+    ACTIVE: { bg: "#EAFBF1", color: "#22C55E", label: "Active" },
+    SUSPENDED: { bg: "#FEE2E2", color: "#DC2626", label: "Suspended" },
+    INACTIVE: { bg: "#F3F4F6", color: "#6B7280", label: "Inactive" },
+  };
+  const current = map[status] || {
+    bg: "#F3F4F6",
+    color: "#6B7280",
+    label: status || "-",
+  };
+  return (
+    <Chip
+      label={current.label}
+      size="small"
+      sx={{
+        bgcolor: current.bg,
+        color: current.color,
+        fontWeight: 700,
+        borderRadius: 999,
+        height: 24,
+        fontSize: 11,
+      }}
+    />
+  );
+}
+
+function initials(name = "") {
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (!parts.length) return "V";
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "V";
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
+function avatarColor(index) {
+  const colors = [
+    "#D88B72",
+    "#5B8DEF",
+    "#8B5CF6",
+    "#EAB308",
+    "#22C55E",
+    "#9CA3AF",
+    "#3B82F6",
+    "#F87171",
+  ];
+  return colors[index % colors.length];
+}
+
+function monthKey(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function previousMonthKey(key) {
+  const [year, month] = key.split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }

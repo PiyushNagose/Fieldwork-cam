@@ -8,9 +8,12 @@ const markAllRead = (userId) => repo.markAllAsRead(userId);
 
 const getUnreadCount = (userId) => repo.countUnread(userId);
 
+const clearAllNotifications = (userId) => repo.clearAllNotifications(userId);
+
 module.exports = {
   getUserNotifications,
   markNotificationRead,
   markAllRead,
   getUnreadCount,
+  clearAllNotifications,
 };

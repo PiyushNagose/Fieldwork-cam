@@ -1,17 +1,27 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
+
+const normalizeUser = (user) => {
+  if (!user) return null;
+
+  return {
+    ...user,
+    authUserId: user.authUserId || user.id || "",
+  };
+};
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("auth_token") || "");
   const [user, setUser] = useState(() => {
     const raw = localStorage.getItem("auth_user");
-    return raw ? JSON.parse(raw) : null;
+    return raw ? normalizeUser(JSON.parse(raw)) : null;
   });
 
   const login = (authData) => {
     const nextToken = authData?.token || "";
-    const nextUser = authData?.user || null;
+    const nextUser = normalizeUser(authData?.user || null);
 
     localStorage.setItem("auth_token", nextToken);
     localStorage.setItem("auth_user", JSON.stringify(nextUser));

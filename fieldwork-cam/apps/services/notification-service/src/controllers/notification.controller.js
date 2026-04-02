@@ -22,9 +22,15 @@ const unreadCount = asyncHandler(async (req, res) => {
   return successResponse(res, { count });
 });
 
+const clearAll = asyncHandler(async (req, res) => {
+  await service.clearAllNotifications(req.user.userId);
+  return successResponse(res, null, "All notifications cleared");
+});
+
 module.exports = {
   getNotifications,
   markRead,
   markAllRead,
   unreadCount,
+  clearAll,
 };

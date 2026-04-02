@@ -61,7 +61,7 @@ const verifyOtp = asyncHandler(async (req, res) => {
 });
 
 const inviteUser = asyncHandler(async (req, res) => {
-  const { phone, email, role } = req.body;
+  const { phone, email, role, inviteBaseUrl, fullName, companyName } = req.body;
 
   if (!phone || !role) {
     throw new ApiError("Phone and role are required", 400);
@@ -71,6 +71,9 @@ const inviteUser = asyncHandler(async (req, res) => {
     phone,
     email,
     role,
+    inviteBaseUrl,
+    fullName,
+    companyName,
   });
 
   return successResponse(res, result, "User invited successfully", 201);

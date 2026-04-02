@@ -1,43 +1,41 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
   Card,
   Checkbox,
-  FormControlLabel,
+  CircularProgress,
   Grid,
   MenuItem,
   Stack,
   TextField,
   Typography,
-  CircularProgress,
 } from "@mui/material";
 import {
   AddPhotoAlternateOutlined,
+  AttachFileOutlined,
   CalendarMonthOutlined,
-  DescriptionOutlined,
   LocationOnOutlined,
   PersonOutlineOutlined,
-  WorkOutlineOutlined,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
 import { createProjectApi } from "../../api/project.api";
 import { getServicesApi } from "../../api/service.api";
 import { getVendorsApi } from "../../api/vendor.api";
 
-function generateWorkOrderNumber() {
+const generateWorkOrderNumber = () => {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `WO-${y}${m}${d}-${rand}`;
-}
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const random = Math.floor(1000 + Math.random() * 9000);
+
+  return `PRJ-${year}${month}${day}-${random}`;
+};
 
 export default function CreateProjectPage() {
   const navigate = useNavigate();
-
   const [form, setForm] = useState({
     title: "",
     clientName: "",
@@ -47,68 +45,65 @@ export default function CreateProjectPage() {
     dueDate: "",
     address: "",
     description: "",
-    latitude: "",
-    longitude: "",
+    priority: "Medium",
     checklist: [],
   });
-
-  const [coverImage, setCoverImage] = useState(null);
+  const [referencePhotos, setReferencePhotos] = useState([]);
   const [attachments, setAttachments] = useState([]);
-
   const [services, setServices] = useState([]);
   const [vendors, setVendors] = useState([]);
-
   const [pageLoading, setPageLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchDependencies = async () => {
+      try {
+        setPageLoading(true);
+        setError("");
+
+        const [servicesResponse, vendorsResponse] = await Promise.all([
+          getServicesApi(),
+          getVendorsApi(),
+        ]);
+
+        const serviceData = servicesResponse?.data || servicesResponse || [];
+        const vendorData = vendorsResponse?.data || vendorsResponse || [];
+
+        setServices(Array.isArray(serviceData) ? serviceData : []);
+        setVendors(Array.isArray(vendorData) ? vendorData : []);
+      } catch (err) {
+        setError(
+          err?.response?.data?.message ||
+            err?.response?.data?.error ||
+            err?.message ||
+            "Failed to load project dependencies",
+        );
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    fetchDependencies();
+  }, []);
 
   const completedCount = useMemo(
     () => form.checklist.filter((item) => item.completed).length,
     [form.checklist],
   );
 
-  const fetchDependencies = async () => {
-    try {
-      setPageLoading(true);
-      setError("");
-
-      const [servicesRes, vendorsRes] = await Promise.all([
-        getServicesApi(),
-        getVendorsApi(),
-      ]);
-
-      const servicesData = servicesRes?.data || servicesRes || [];
-      const vendorsData = vendorsRes?.data || vendorsRes || [];
-
-      setServices(Array.isArray(servicesData) ? servicesData : []);
-      setVendors(Array.isArray(vendorsData) ? vendorsData : []);
-    } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load services or vendors",
-      );
-    } finally {
-      setPageLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDependencies();
-  }, []);
-
-  const handleChange = (key) => (event) => {
-    setForm((prev) => ({ ...prev, [key]: event.target.value }));
+  const handleFieldChange = (field) => (event) => {
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
   const handleServiceChange = (event) => {
     const nextServiceId = event.target.value;
-    const service = services.find(
-      (item) => (item._id || item.id) === nextServiceId,
+    const selectedService = services.find(
+      (service) => (service._id || service.id) === nextServiceId,
     );
 
-    const checklistFromService = Array.isArray(service?.photoChecklist)
-      ? service.photoChecklist.map((item, index) => ({
+    const checklist = Array.isArray(selectedService?.photoChecklist)
+      ? selectedService.photoChecklist.map((item, index) => ({
           id: `${item.title}-${index}`,
           title: item.title,
           required: Boolean(item.required),
@@ -120,81 +115,75 @@ export default function CreateProjectPage() {
     setForm((prev) => ({
       ...prev,
       serviceId: nextServiceId,
-      serviceType: service?.name || "",
-      checklist: checklistFromService,
+      serviceType: selectedService?.name || "",
+      checklist,
     }));
   };
 
-  const handleVendorChange = (event) => {
-    setForm((prev) => ({
-      ...prev,
-      assignedVendorAuthUserId: event.target.value,
-    }));
-  };
-
-  const toggleChecklist = (id) => {
+  const toggleChecklist = (itemId) => {
     setForm((prev) => ({
       ...prev,
       checklist: prev.checklist.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item,
+        item.id === itemId ? { ...item, completed: !item.completed } : item,
       ),
     }));
   };
 
   const handleSubmit = async () => {
     try {
-      setLoading(true);
+      setSubmitting(true);
       setError("");
 
       if (!form.title.trim()) throw new Error("Project name is required");
-      if (!form.address.trim()) throw new Error("Location is required");
+      if (!form.clientName.trim()) throw new Error("Client is required");
       if (!form.serviceId) throw new Error("Service type is required");
-
-      const payload = new FormData();
-
-      payload.append("workOrderNumber", generateWorkOrderNumber());
-      payload.append("title", form.title);
-      payload.append("address", form.address);
-      payload.append("serviceType", form.serviceType);
-      payload.append("serviceId", form.serviceId);
-      payload.append("clientName", form.clientName);
-      payload.append("assignedVendorAuthUserId", form.assignedVendorAuthUserId);
-      payload.append("dueDate", form.dueDate || "");
-      payload.append("description", form.description || "");
-      payload.append("latitude", form.latitude || "");
-      payload.append("longitude", form.longitude || "");
-
-      if (coverImage) {
-        payload.append("coverImage", coverImage);
+      if (!form.assignedVendorAuthUserId) {
+        throw new Error("Assigned vendor is required");
       }
+      if (!form.address.trim()) throw new Error("Location is required");
 
-      attachments.forEach((file) => {
-        payload.append("attachments", file);
+      await createProjectApi({
+        workOrderNumber: generateWorkOrderNumber(),
+        title: form.title.trim(),
+        clientName: form.clientName.trim(),
+        serviceId: form.serviceId,
+        serviceType: form.serviceType,
+        assignedVendorAuthUserId: form.assignedVendorAuthUserId,
+        dueDate: form.dueDate || null,
+        address: form.address.trim(),
+        description: form.description.trim(),
+        priority: form.priority,
+        coverImageUrl: referencePhotos[0]?.name || "",
+        attachments: [
+          ...referencePhotos.map((file) => file.name),
+          ...attachments.map((file) => file.name),
+        ],
+        checklist: form.checklist.map((item) => ({
+          title: item.title,
+          required: item.required,
+          captureType: item.captureType,
+          completed: item.completed,
+        })),
       });
 
-      await createProjectApi(payload);
       navigate("/admin/projects");
     } catch (err) {
       setError(
         err?.response?.data?.message ||
+          err?.response?.data?.error ||
           err?.message ||
           "Failed to create project",
       );
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   if (pageLoading) {
     return (
-      <Stack
-        alignItems="center"
-        justifyContent="center"
-        sx={{ minHeight: 320 }}
-        spacing={2}
-      >
+      <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 320 }} spacing={2}>
         <CircularProgress />
-        <Typography color="text.secondary">
+        <Typography sx={{ fontSize: 13, color: "#8E8882" }}>
           Loading project dependencies...
         </Typography>
       </Stack>
@@ -210,7 +199,6 @@ export default function CreateProjectPage() {
         minHeight: "100%",
       }}
     >
-      {/* ── Page header ── */}
       <Typography
         sx={{
           fontSize: 28,
@@ -222,140 +210,69 @@ export default function CreateProjectPage() {
       >
         Create New Project
       </Typography>
-
-      <Typography
-        sx={{
-          mt: 0.5,
-          color: "#9CA3AF",
-          fontSize: 13,
-          fontWeight: 500,
-        }}
-      >
-        Initiate a new operational site by filling out the details below.
+      <Typography sx={{ mt: 0.45, color: "#9CA3AF", fontSize: 13, fontWeight: 500 }}>
+        Initiate a new operation site by filling out the details below. All fields marked with * are required.
       </Typography>
 
-      {/* ── Form sections ── */}
-      <Stack spacing={1.5} sx={{ mt: 2.25 }}>
-        {/* General Information */}
-        <Card
-          sx={{
-            p: 2,
-            borderRadius: 1,
-            border: "1px solid #E9E1DB",
-            boxShadow: "none",
-            bgcolor: "#FFFFFF",
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#1F2937",
-              lineHeight: 1.2,
-              mb: 2,
-            }}
-          >
-            General Information
-          </Typography>
-
+      <Stack spacing={1.5} sx={{ mt: 2 }}>
+        <SectionCard title="General Information">
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 size="small"
-                label="Project Name"
+                label="Project Name *"
+                placeholder="e.g., Q4 Logistics Optimization"
                 value={form.title}
-                onChange={handleChange("title")}
-                InputProps={{
-                  startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#9CA3AF",
-                      }}
-                    >
-                      <DescriptionOutlined sx={{ fontSize: 18 }} />
-                    </Box>
-                  ),
-                }}
+                onChange={handleFieldChange("title")}
+                sx={fieldSx}
               />
             </Grid>
-
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
                 size="small"
-                label="Client"
+                label="Client *"
+                placeholder="Select or enter client name"
                 value={form.clientName}
-                onChange={handleChange("clientName")}
+                onChange={handleFieldChange("clientName")}
+                sx={fieldSx}
               />
             </Grid>
-
             <Grid item xs={12} md={6}>
               <TextField
                 select
                 fullWidth
                 size="small"
-                label="Service Type"
+                label="Service Type *"
                 value={form.serviceId}
                 onChange={handleServiceChange}
+                sx={fieldSx}
               >
                 {services.map((service) => (
-                  <MenuItem
-                    key={service._id || service.id}
-                    value={service._id || service.id}
-                  >
+                  <MenuItem key={service._id || service.id} value={service._id || service.id}>
                     {service.name}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
           </Grid>
-        </Card>
+        </SectionCard>
 
-        {/* Operational Details */}
-        <Card
-          sx={{
-            p: 2,
-            borderRadius: 1,
-            border: "1px solid #E9E1DB",
-            boxShadow: "none",
-            bgcolor: "#FFFFFF",
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#1F2937",
-              lineHeight: 1.2,
-              mb: 2,
-            }}
-          >
-            Operational Details
-          </Typography>
-
+        <SectionCard title="Operational Details">
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <TextField
                 select
                 fullWidth
                 size="small"
-                label="Assigned Vendor"
+                label="Assigned Vendor *"
                 value={form.assignedVendorAuthUserId}
-                onChange={handleVendorChange}
+                onChange={handleFieldChange("assignedVendorAuthUserId")}
+                sx={fieldSx}
                 InputProps={{
                   startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#9CA3AF",
-                      }}
-                    >
+                    <Box sx={startAdornmentSx}>
                       <PersonOutlineOutlined sx={{ fontSize: 18 }} />
                     </Box>
                   ),
@@ -377,20 +294,14 @@ export default function CreateProjectPage() {
                 fullWidth
                 size="small"
                 type="date"
-                label="Deadline"
+                label="Deadline *"
                 value={form.dueDate}
-                onChange={handleChange("dueDate")}
+                onChange={handleFieldChange("dueDate")}
                 InputLabelProps={{ shrink: true }}
+                sx={fieldSx}
                 InputProps={{
                   startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#9CA3AF",
-                      }}
-                    >
+                    <Box sx={startAdornmentSx}>
                       <CalendarMonthOutlined sx={{ fontSize: 18 }} />
                     </Box>
                   ),
@@ -402,19 +313,14 @@ export default function CreateProjectPage() {
               <TextField
                 fullWidth
                 size="small"
-                label="Location"
+                label="Location *"
+                placeholder="San Francisco, CA (or search map)"
                 value={form.address}
-                onChange={handleChange("address")}
+                onChange={handleFieldChange("address")}
+                sx={fieldSx}
                 InputProps={{
                   startAdornment: (
-                    <Box
-                      sx={{
-                        mr: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#9CA3AF",
-                      }}
-                    >
+                    <Box sx={startAdornmentSx}>
                       <LocationOnOutlined sx={{ fontSize: 18 }} />
                     </Box>
                   ),
@@ -422,245 +328,275 @@ export default function CreateProjectPage() {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Latitude"
-                value={form.latitude}
-                onChange={handleChange("latitude")}
-                placeholder="e.g. 45.5231"
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Longitude"
-                value={form.longitude}
-                onChange={handleChange("longitude")}
-                placeholder="e.g. -122.6765"
-              />
+            <Grid item xs={12}>
+              <Box sx={mapPreviewSx}>
+                <LocationOnOutlined sx={{ fontSize: 20, color: "#D0C4BB" }} />
+                <Typography sx={{ mt: 0.6, fontSize: 11.5, color: "#BBB1A9", fontWeight: 500 }}>
+                  Interactive map preview for selected location
+                </Typography>
+              </Box>
             </Grid>
           </Grid>
-        </Card>
+        </SectionCard>
 
-        {/* Photo Checklist */}
-        <Card
-          sx={{
-            p: 2,
-            borderRadius: 1,
-            border: "1px solid #E9E1DB",
-            boxShadow: "none",
-            bgcolor: "#FFFFFF",
-          }}
+        <SectionCard
+          title="Photo Checklist"
+          rightText={`${completedCount} of ${form.checklist.length} completed`}
         >
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            mb={1.5}
-          >
-            <Typography
-              sx={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: "#1F2937",
-                lineHeight: 1.2,
-              }}
-            >
-              Photo Checklist
-            </Typography>
-            <Typography
-              sx={{ fontSize: 12.5, color: "#9CA3AF", fontWeight: 500 }}
-            >
-              {completedCount} of {form.checklist.length} completed
-            </Typography>
+          <Stack spacing={0.3}>
+            {form.checklist.length ? (
+              form.checklist.map((item) => (
+                <Stack
+                  key={item.id}
+                  direction="row"
+                  alignItems="center"
+                  spacing={1}
+                  sx={{ py: 0.2 }}
+                >
+                  <Checkbox
+                    checked={item.completed}
+                    onChange={() => toggleChecklist(item.id)}
+                    size="small"
+                    sx={{ color: "#D1C7BF" }}
+                  />
+                  <Box>
+                    <Typography sx={{ fontSize: 12.5, color: "#3E3A36", fontWeight: 500 }}>
+                      {item.title}
+                    </Typography>
+                    <Typography sx={{ fontSize: 10.5, color: "#ABA49D" }}>
+                      {item.captureType.replaceAll("_", " ")}
+                      {item.required ? " • Required" : ""}
+                    </Typography>
+                  </Box>
+                </Stack>
+              ))
+            ) : (
+              <Typography sx={{ fontSize: 12.5, color: "#B0B5BE" }}>
+                Select a service type to load checklist items.
+              </Typography>
+            )}
           </Stack>
 
-          {form.serviceId ? (
-            <Stack spacing={0.6}>
-              {form.checklist.length ? (
-                form.checklist.map((item) => (
-                  <FormControlLabel
-                    key={item.id}
-                    control={
-                      <Checkbox
-                        checked={item.completed}
-                        onChange={() => toggleChecklist(item.id)}
-                        size="small"
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography sx={{ fontSize: 13, color: "#374151" }}>
-                          {item.title}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: 11,
-                            color: "#9CA3AF",
-                            textTransform: "uppercase",
-                            fontWeight: 700,
-                          }}
-                        >
-                          {item.required ? "Required" : "Optional"} •{" "}
-                          {item.captureType?.replaceAll("_", " ")}
-                        </Typography>
-                      </Box>
-                    }
-                    sx={{ m: 0 }}
-                  />
-                ))
-              ) : (
-                <Typography sx={{ fontSize: 13, color: "#B0B5BE" }}>
-                  Selected service has no checklist requirements
-                </Typography>
-              )}
-            </Stack>
-          ) : (
-            <Typography sx={{ fontSize: 13, color: "#B0B5BE" }}>
-              Select a service type to load its checklist
-            </Typography>
-          )}
-
-          <Button
-            component="label"
-            variant="outlined"
-            startIcon={<AddPhotoAlternateOutlined />}
-            sx={{
-              mt: 2,
-              borderRadius: 1,
-              borderColor: "#E9E1DB",
-              color: "#6B7280",
-              textTransform: "none",
-              fontSize: 12.5,
-              fontWeight: 600,
-            }}
-          >
-            Upload Cover Image
+          <Button component="label" variant="outlined" startIcon={<AddPhotoAlternateOutlined />} sx={uploadButtonSx}>
+            Upload Photos
             <input
               type="file"
               hidden
               accept="image/*"
-              onChange={(e) => setCoverImage(e.target.files?.[0] || null)}
+              multiple
+              onChange={(event) => {
+                setReferencePhotos(Array.from(event.target.files || []));
+              }}
             />
           </Button>
 
-          {coverImage ? (
-            <Typography sx={{ mt: 1, fontSize: 12, color: "#6B7280" }}>
-              Selected: {coverImage.name}
-            </Typography>
-          ) : null}
-        </Card>
-
-        {/* Project Description */}
-        <Card
-          sx={{
-            p: 2,
-            borderRadius: 1,
-            border: "1px solid #E9E1DB",
-            boxShadow: "none",
-            bgcolor: "#FFFFFF",
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#1F2937",
-              lineHeight: 1.2,
-              mb: 2,
-            }}
-          >
-            Project Description
+          <Typography sx={helperTextSx}>
+            Selected photo names are saved with the project brief for reference.
           </Typography>
 
+          {referencePhotos.length ? (
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+              {referencePhotos.map((file) => (
+                <Box key={file.name} sx={filePillSx}>
+                  {file.name}
+                </Box>
+              ))}
+            </Stack>
+          ) : null}
+        </SectionCard>
+
+        <SectionCard title="Project Description">
           <TextField
             fullWidth
             multiline
-            minRows={6}
+            minRows={5}
             label="Description & Notes"
             placeholder="Provide detailed project requirements, milestones, and specific operational instructions..."
             value={form.description}
-            onChange={handleChange("description")}
+            onChange={handleFieldChange("description")}
+            sx={multilineFieldSx}
           />
 
-          <Button
-            component="label"
-            variant="outlined"
-            startIcon={<WorkOutlineOutlined />}
-            sx={{
-              mt: 2,
-              borderRadius: 1,
-              borderColor: "#E9E1DB",
-              color: "#6B7280",
-              textTransform: "none",
-              fontSize: 12.5,
-              fontWeight: 600,
-            }}
-          >
+          <Button component="label" variant="outlined" startIcon={<AttachFileOutlined />} sx={uploadButtonSx}>
             Add Attachments
             <input
               type="file"
               hidden
               multiple
-              onChange={(e) => setAttachments(Array.from(e.target.files || []))}
+              onChange={(event) => {
+                setAttachments(Array.from(event.target.files || []));
+              }}
             />
           </Button>
 
+          <Typography sx={helperTextSx}>
+            Accepted file names are stored with the project record for the admin workflow.
+          </Typography>
+
           {attachments.length ? (
-            <Stack spacing={0.5} sx={{ mt: 1 }}>
-              {attachments.map((file, index) => (
-                <Typography
-                  key={`${file.name}-${index}`}
-                  sx={{ fontSize: 12, color: "#6B7280" }}
-                >
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+              {attachments.map((file) => (
+                <Box key={file.name} sx={filePillSx}>
                   {file.name}
-                </Typography>
+                </Box>
               ))}
             </Stack>
           ) : null}
-        </Card>
+        </SectionCard>
 
-        {error ? <Alert severity="error">{error}</Alert> : null}
+        {error ? (
+          <Alert severity="error" sx={{ borderRadius: 1 }}>
+            {error}
+          </Alert>
+        ) : null}
 
-        {/* ── Footer actions ── */}
-        <Stack direction="row" justifyContent="flex-end" spacing={1.5}>
-          <Button
-            variant="text"
-            onClick={() => navigate("/admin/projects")}
-            sx={{
-              color: "#6B7280",
-              borderRadius: 1,
-              textTransform: "none",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
+        <Stack direction="row" justifyContent="flex-end" spacing={1.25}>
+          <Button onClick={() => navigate("/admin/projects")} sx={cancelButtonSx}>
             Cancel
           </Button>
-
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={loading}
-            sx={{
-              borderRadius: 1,
-              minWidth: 150,
-              bgcolor: "#8D7B72",
-              textTransform: "none",
-              fontSize: 13,
-              fontWeight: 600,
-              boxShadow: "none",
-              "&:hover": { bgcolor: "#7D6B63", boxShadow: "none" },
-            }}
-          >
-            {loading ? "Initiating..." : "Initiate Project"}
+          <Button onClick={handleSubmit} disabled={submitting} sx={submitButtonSx}>
+            {submitting ? "Initiating..." : "Initiate Project"}
           </Button>
         </Stack>
       </Stack>
     </Box>
   );
 }
+
+function SectionCard({ title, rightText, children }) {
+  return (
+    <Card
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        border: "1px solid #E9E1DB",
+        boxShadow: "none",
+        bgcolor: "#FFFFFF",
+      }}
+    >
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.8 }}>
+        <Typography sx={{ fontSize: 15.5, fontWeight: 700, color: "#1F2937" }}>
+          {title}
+        </Typography>
+        {rightText ? (
+          <Typography sx={{ fontSize: 11.5, color: "#A39D96", fontWeight: 500 }}>
+            {rightText}
+          </Typography>
+        ) : null}
+      </Stack>
+      {children}
+    </Card>
+  );
+}
+
+const fieldSx = {
+  "& .MuiInputLabel-root": {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontWeight: 500,
+  },
+  "& .MuiInputBase-root": {
+    minHeight: 40,
+    borderRadius: 1,
+    bgcolor: "#FFFFFF",
+    fontSize: 12.5,
+    color: "#374151",
+    fontWeight: 500,
+  },
+  "& .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#E3DDD7",
+  },
+  "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#DDD4CC",
+  },
+  "& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+    borderColor: "#D5C6BA",
+    borderWidth: "1px",
+  },
+};
+
+const multilineFieldSx = {
+  ...fieldSx,
+  "& .MuiInputBase-root": {
+    minHeight: 140,
+    alignItems: "flex-start",
+    borderRadius: 1,
+    bgcolor: "#FFFFFF",
+    fontSize: 12.5,
+    color: "#374151",
+    fontWeight: 500,
+  },
+};
+
+const startAdornmentSx = {
+  mr: 1,
+  display: "flex",
+  alignItems: "center",
+  color: "#9CA3AF",
+};
+
+const mapPreviewSx = {
+  minHeight: 108,
+  borderRadius: 1,
+  border: "1px solid #E9E1DB",
+  bgcolor: "#F7F4F1",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const uploadButtonSx = {
+  mt: 1.8,
+  width: "100%",
+  minHeight: 36,
+  borderRadius: 1,
+  borderColor: "#E9E1DB",
+  color: "#6B7280",
+  textTransform: "none",
+  fontSize: 12.5,
+  fontWeight: 600,
+  boxShadow: "none",
+  "&:hover": {
+    borderColor: "#DED3CB",
+    bgcolor: "#FCFAF8",
+    boxShadow: "none",
+  },
+};
+
+const helperTextSx = {
+  mt: 0.8,
+  fontSize: 10.5,
+  color: "#B0B5BE",
+};
+
+const filePillSx = {
+  px: 1,
+  py: 0.55,
+  borderRadius: 1,
+  bgcolor: "#F5EFEB",
+  color: "#736D67",
+  fontSize: 11,
+  fontWeight: 500,
+};
+
+const cancelButtonSx = {
+  color: "#6B7280",
+  borderRadius: 1,
+  textTransform: "none",
+  fontSize: 13,
+  fontWeight: 600,
+};
+
+const submitButtonSx = {
+  borderRadius: 1,
+  minWidth: 154,
+  bgcolor: "#8D7B72",
+  color: "#FFFFFF",
+  textTransform: "none",
+  fontSize: 13,
+  fontWeight: 600,
+  boxShadow: "none",
+  "&:hover": { bgcolor: "#7D6B63", boxShadow: "none" },
+  "&.Mui-disabled": { bgcolor: "#D7CDC6", color: "#8F8A84" },
+};

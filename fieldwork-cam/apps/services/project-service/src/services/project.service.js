@@ -6,8 +6,43 @@ const {
   findAllProjects,
   assignVendorToProject,
   assignStaffToProject,
+  updateProjectById,
 } = require("../repositories/project.repository");
 const ApiError = require("../utils/apiError");
+
+const normalizeChecklist = (items = []) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      title: String(item?.title || "").trim(),
+      required: Boolean(item?.required),
+      captureType: String(item?.captureType || "STANDARD").trim() || "STANDARD",
+      completed: Boolean(item?.completed),
+    }))
+    .filter((item) => item.title);
+
+const normalizeAttachments = (items = []) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+const ensureProjectAccess = (authUser, project) => {
+  if (!project) {
+    throw new ApiError("Project not found", 404);
+  }
+
+  if (authUser?.role === "ADMIN") {
+    return project;
+  }
+
+  if (
+    project.assignedVendorAuthUserId &&
+    project.assignedVendorAuthUserId !== authUser?.userId
+  ) {
+    throw new ApiError("Unauthorized project access", 403);
+  }
+
+  return project;
+};
 
 const getVendorProjects = async (authUserId, query = {}) => {
   return findProjectsByVendor(authUserId, {
@@ -15,21 +50,9 @@ const getVendorProjects = async (authUserId, query = {}) => {
   });
 };
 
-const getProjectById = async (authUserId, projectId) => {
+const getProjectById = async (authUser, projectId) => {
   const project = await findProjectById(projectId);
-
-  if (!project) {
-    throw new ApiError("Project not found", 404);
-  }
-
-  if (
-    project.assignedVendorAuthUserId &&
-    project.assignedVendorAuthUserId !== authUserId
-  ) {
-    throw new ApiError("Unauthorized project access", 403);
-  }
-
-  return project;
+  return ensureProjectAccess(authUser, project);
 };
 
 const getProjects = async (authUser) => {
@@ -57,47 +80,30 @@ const createVendorProject = async (payload) => {
     description: payload.description || "",
     progress: payload.progress || 0,
     coverImageUrl: payload.coverImageUrl || "",
+    checklist: normalizeChecklist(payload.checklist),
+    attchments: normalizeAttachments(payload.attachments),
+    attachments: normalizeAttachments(payload.attachments),
     latitude: payload.latitude ?? null,
     longitude: payload.longitude ?? null,
   });
 };
 
-const getProjectNotes = async (authUserId, projectId) => {
+const getProjectNotes = async (authUser, projectId) => {
   const project = await findProjectById(projectId);
-
-  if (!project) {
-    throw new ApiError("Project not found", 404);
-  }
-
-  if (
-    project.assignedVendorAuthUserId &&
-    project.assignedVendorAuthUserId !== authUserId
-  ) {
-    throw new ApiError("Unauthorized project access", 403);
-  }
+  ensureProjectAccess(authUser, project);
 
   return (project.notes || []).sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
   );
 };
 
-const addProjectNote = async (authUserId, projectId, note) => {
+const addProjectNote = async (authUser, projectId, note) => {
   const project = await findProjectById(projectId);
-
-  if (!project) {
-    throw new ApiError("Project not found", 404);
-  }
-
-  if (
-    project.assignedVendorAuthUserId &&
-    project.assignedVendorAuthUserId !== authUserId
-  ) {
-    throw new ApiError("Unauthorized project access", 403);
-  }
+  ensureProjectAccess(authUser, project);
 
   const updatedProject = await pushProjectNote(projectId, {
     note,
-    createdByAuthUserId: authUserId,
+    createdByAuthUserId: authUser.userId,
   });
 
   return updatedProject.notes.sort(
@@ -125,6 +131,16 @@ const assignStaff = async (projectId, staffId) => {
   return assignStaffToProject(projectId, staffId);
 };
 
+const updateProjectStatus = async (projectId, status) => {
+  const project = await findProjectById(projectId);
+
+  if (!project) {
+    throw new ApiError("Project not found", 404);
+  }
+
+  return updateProjectById(projectId, { status });
+};
+
 module.exports = {
   getVendorProjects,
   getProjectById,
@@ -134,4 +150,5 @@ module.exports = {
   assignVendor,
   assignStaff,
   getProjects,
+  updateProjectStatus,
 };

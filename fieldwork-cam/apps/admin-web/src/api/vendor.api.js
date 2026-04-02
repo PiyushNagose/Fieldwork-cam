@@ -18,6 +18,11 @@ export const getVendorProfileByAuthUserIdApi = async () => {
   return response.data;
 };
 
+export const updateVendorProfileApi = async (payload) => {
+  const response = await apiClient.put("/vendors/me/profile", payload);
+  return response.data;
+};
+
 // Admin creates a new vendor (invites user and creates vendor profile)
 export const createVendorByAdminApi = async (payload) => {
   const response = await apiClient.post("/vendors/admin/create", payload);

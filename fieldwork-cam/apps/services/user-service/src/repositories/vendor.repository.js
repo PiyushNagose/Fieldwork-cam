@@ -13,9 +13,13 @@ const findVendorProfileById = (id) => VendorProfile.findById(id);
 
 const findByAuthUserId = (authUserId) => VendorProfile.findOne({ authUserId });
 
+const updateVendorProfileByAuthUserId = (authUserId, payload) =>
+  VendorProfile.findOneAndUpdate({ authUserId }, payload, { new: true });
+
 module.exports = {
   createVendorProfile,
   findAllVendorProfiles,
   findVendorProfileById,
   findByAuthUserId,
+  updateVendorProfileByAuthUserId,
 };

@@ -13,6 +13,32 @@ const staffProfileSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    fullName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    email: {
+      type: String,
+      default: "",
+      trim: true,
+      lowercase: true,
+    },
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    location: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    profilePhotoUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     roleTitle: {
       type: String,
       default: "",
@@ -25,12 +51,32 @@ const staffProfileSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "INACTIVE"],
+      enum: ["ACTIVE", "INACTIVE", "ON_LEAVE"],
       default: "ACTIVE",
+    },
+    specialties: {
+      type: [String],
+      default: [],
     },
     assignedProjectIds: {
       type: [String],
       default: [],
+    },
+    completedJobs: {
+      type: Number,
+      default: 0,
+    },
+    rating: {
+      type: Number,
+      default: 0,
+    },
+    lastActiveAt: {
+      type: Date,
+      default: null,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true },

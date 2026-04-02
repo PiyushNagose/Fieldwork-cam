@@ -6,6 +6,46 @@ const {
   updateService,
 } = require("../repositories/service.repository");
 
+const normalizeWorkflowRules = (payload = {}, fallback = {}) => {
+  const nestedRules = payload.workflowRules || {};
+
+  return {
+    serviceLogic:
+      typeof nestedRules.serviceLogic !== "undefined"
+        ? nestedRules.serviceLogic
+        : typeof payload.workflowLogic !== "undefined"
+          ? payload.workflowLogic
+          : fallback.serviceLogic || "",
+    requireSignatureOnCompletion:
+      typeof nestedRules.requireSignatureOnCompletion !== "undefined"
+        ? Boolean(nestedRules.requireSignatureOnCompletion)
+        : typeof payload.requireSignature !== "undefined"
+          ? Boolean(payload.requireSignature)
+          : Boolean(fallback.requireSignatureOnCompletion),
+    autoApproveInvoicesUnder500:
+      typeof nestedRules.autoApproveInvoicesUnder500 !== "undefined"
+        ? Boolean(nestedRules.autoApproveInvoicesUnder500)
+        : typeof payload.autoApproveInvoices !== "undefined"
+          ? Boolean(payload.autoApproveInvoices)
+          : Boolean(fallback.autoApproveInvoicesUnder500),
+    notifyClientOnDispatch:
+      typeof nestedRules.notifyClientOnDispatch !== "undefined"
+        ? Boolean(nestedRules.notifyClientOnDispatch)
+        : typeof payload.notifyClientOnDispatch !== "undefined"
+          ? Boolean(payload.notifyClientOnDispatch)
+          : Boolean(fallback.notifyClientOnDispatch),
+  };
+};
+
+const normalizePhotoChecklist = (photoChecklist = []) =>
+  (Array.isArray(photoChecklist) ? photoChecklist : [])
+    .map((item) => ({
+      title: String(item?.title || "").trim(),
+      required: Boolean(item?.required),
+      captureType: String(item?.captureType || "STANDARD").trim() || "STANDARD",
+    }))
+    .filter((item) => item.title);
+
 const getAllServices = async (query = {}) => {
   const filter = {};
 
@@ -32,13 +72,8 @@ const createServiceConfig = async (payload) => {
     name: payload.name,
     defaultPrice: payload.defaultPrice || 0,
     status: payload.status || "ACTIVE",
-    photoChecklist: payload.photoChecklist || [],
-    workflowRules: {
-      serviceLogic: payload.workflowLogic || "",
-      requireSignatureOnCompletion: !!payload.requireSignature,
-      autoApproveInvoicesUnder500: !!payload.autoApproveInvoices,
-      notifyClientOnDispatch: !!payload.notifyClientOnDispatch,
-    },
+    photoChecklist: normalizePhotoChecklist(payload.photoChecklist),
+    workflowRules: normalizeWorkflowRules(payload),
   });
 };
 
@@ -57,25 +92,11 @@ const updateServiceConfig = async (id, payload) => {
         ? payload.defaultPrice
         : existing.defaultPrice,
     status: payload.status ?? existing.status,
-    photoChecklist: payload.photoChecklist ?? existing.photoChecklist,
-    workflowRules: {
-      serviceLogic:
-        typeof payload.workflowLogic !== "undefined"
-          ? payload.workflowLogic
-          : existing.workflowRules?.serviceLogic || "",
-      requireSignatureOnCompletion:
-        typeof payload.requireSignature !== "undefined"
-          ? payload.requireSignature
-          : existing.workflowRules?.requireSignatureOnCompletion || false,
-      autoApproveInvoicesUnder500:
-        typeof payload.autoApproveInvoices !== "undefined"
-          ? payload.autoApproveInvoices
-          : existing.workflowRules?.autoApproveInvoicesUnder500 || false,
-      notifyClientOnDispatch:
-        typeof payload.notifyClientOnDispatch !== "undefined"
-          ? payload.notifyClientOnDispatch
-          : existing.workflowRules?.notifyClientOnDispatch || false,
-    },
+    photoChecklist:
+      typeof payload.photoChecklist !== "undefined"
+        ? normalizePhotoChecklist(payload.photoChecklist)
+        : existing.photoChecklist,
+    workflowRules: normalizeWorkflowRules(payload, existing.workflowRules || {}),
   });
 };
 

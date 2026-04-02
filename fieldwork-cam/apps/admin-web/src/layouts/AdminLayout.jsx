@@ -32,7 +32,7 @@ import {
   LogoutOutlined,
 } from "@mui/icons-material";
 import { useAuth } from "../auth/AuthContext";
-import NotificationsDrawer from "../pages/admin/NotificationsDrawer";
+import NotificationsPanel from "../components/NotificationsPanel";
 import { getUnreadNotificationsCountApi } from "../api/notification.api";
 
 const drawerWidth = 220;
@@ -342,7 +342,7 @@ export default function AdminLayout() {
         </Box>
       </Box>
 
-      <NotificationsDrawer
+      <NotificationsPanel
         open={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
         unreadCount={unreadCount}

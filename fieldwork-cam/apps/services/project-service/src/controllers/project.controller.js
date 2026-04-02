@@ -9,7 +9,7 @@ const getProjects = asyncHandler(async (req, res) => {
 
 const getProjectById = asyncHandler(async (req, res) => {
   const project = await projectService.getProjectById(
-    req.user.userId,
+    req.user,
     req.params.projectId,
   );
   return successResponse(res, project, "Project fetched successfully", 200);
@@ -22,7 +22,7 @@ const createProject = asyncHandler(async (req, res) => {
 
 const getProjectNotes = asyncHandler(async (req, res) => {
   const notes = await projectService.getProjectNotes(
-    req.user.userId,
+    req.user,
     req.params.projectId,
   );
   return successResponse(res, notes, "Project notes fetched successfully", 200);
@@ -30,7 +30,7 @@ const getProjectNotes = asyncHandler(async (req, res) => {
 
 const addProjectNote = asyncHandler(async (req, res) => {
   const notes = await projectService.addProjectNote(
-    req.user.userId,
+    req.user,
     req.params.projectId,
     req.body.note,
   );
@@ -53,6 +53,14 @@ const assignStaff = asyncHandler(async (req, res) => {
   return successResponse(res, project, "Staff assigned successfully", 200);
 });
 
+const updateProjectStatus = asyncHandler(async (req, res) => {
+  const project = await projectService.updateProjectStatus(
+    req.params.projectId,
+    req.body.status,
+  );
+  return successResponse(res, project, "Project status updated successfully", 200);
+});
+
 module.exports = {
   getProjects,
   getProjectById,
@@ -61,4 +69,5 @@ module.exports = {
   addProjectNote,
   assignVendor,
   assignStaff,
+  updateProjectStatus,
 };

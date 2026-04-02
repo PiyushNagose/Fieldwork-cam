@@ -54,9 +54,24 @@ const getVendorProfileByAuthUserId = async (req, res) => {
   }
 };
 
+const updateVendorProfile = async (req, res) => {
+  try {
+    const profile = await vendorService.updateVendorProfile(
+      req.user.userId,
+      req.body,
+    );
+    return res
+      .status(200)
+      .json({ data: profile, message: "Vendor profile updated successfully" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   getVendors,
   getVendorById,
   createVendorByAdmin,
   getVendorProfileByAuthUserId,
+  updateVendorProfile,
 };

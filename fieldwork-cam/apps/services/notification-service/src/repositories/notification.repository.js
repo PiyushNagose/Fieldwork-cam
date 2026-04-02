@@ -14,10 +14,13 @@ const markAllAsRead = (userId) =>
 const countUnread = (userId) =>
   Notification.countDocuments({ userId, isRead: false });
 
+const clearAllNotifications = (userId) => Notification.deleteMany({ userId });
+
 module.exports = {
   createNotification,
   getNotifications,
   markAsRead,
   markAllAsRead,
   countUnread,
+  clearAllNotifications,
 };

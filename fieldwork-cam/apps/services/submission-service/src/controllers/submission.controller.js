@@ -28,7 +28,8 @@ const reviewSubmission = asyncHandler(async (req, res) => {
   const data = await submissionService.reviewSubmissionService(
     req.user.userId,
     req.params.id,
-    req.body
+    req.body,
+    req.headers.authorization
   );
 
   return successResponse(res, data, "Submission reviewed successfully", 200);
@@ -38,7 +39,8 @@ const requestRetake = asyncHandler(async (req, res) => {
   const data = await submissionService.requestRetakeService(
     req.user.userId,
     req.params.id,
-    req.body
+    req.body,
+    req.headers.authorization
   );
 
   return successResponse(res, data, "Retake requested successfully", 200);

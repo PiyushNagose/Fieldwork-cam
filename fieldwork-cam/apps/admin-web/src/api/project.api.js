@@ -15,6 +15,11 @@ export const getProjectByIdApi = async (projectId) => {
   return response.data;
 };
 
+export const getProjectNotesApi = async (projectId) => {
+  const response = await apiClient.get(`/projects/${projectId}/notes`);
+  return response.data;
+};
+
 export const assignVendorToProjectApi = async (projectId, vendorAuthUserId) => {
   const response = await apiClient.post(
     `/projects/${projectId}/assign-vendor`,
