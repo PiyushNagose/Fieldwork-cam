@@ -1,0 +1,188 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dev: auth-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/auth-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: user-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/user-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: project-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/project-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: notification-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/notification-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: media-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/media-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: ai-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/ai-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: report-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/report-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: billing-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/billing-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: submission-service",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/services/submission-service"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: api-gateway",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/api-gateway"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: admin-web",
+      "type": "shell",
+      "command": "npm run dev -- --host 0.0.0.0",
+      "options": {
+        "cwd": "${workspaceFolder}/apps/admin-web"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: run all apps",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "dev: auth-service",
+        "dev: user-service",
+        "dev: project-service",
+        "dev: notification-service",
+        "dev: media-service",
+        "dev: ai-service",
+        "dev: report-service",
+        "dev: billing-service",
+        "dev: submission-service",
+        "dev: api-gateway",
+        "dev: admin-web"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}
