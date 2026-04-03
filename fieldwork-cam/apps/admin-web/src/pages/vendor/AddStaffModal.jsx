@@ -95,8 +95,9 @@ export default function AddStaffModal({ open, onClose, onSuccess }) {
     try {
       setLoading(true);
       setError("");
-      await createStaffApi(form);
-      onSuccess?.();
+      const res = await createStaffApi(form);
+      const data = res?.data || res || null;
+      onSuccess?.(data);
       onClose?.();
       resetForm();
     } catch (err) {

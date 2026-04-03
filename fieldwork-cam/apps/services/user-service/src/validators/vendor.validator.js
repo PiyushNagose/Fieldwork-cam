@@ -51,6 +51,18 @@ const updateVendorProfileValidator = [
     .optional()
     .isString()
     .withMessage("Profile photo URL must be string"),
+  body("bannerImageUrl")
+    .optional()
+    .isString()
+    .withMessage("Banner image URL must be string"),
+  body("profilePhotoDataUrl")
+    .optional()
+    .isString()
+    .withMessage("Profile photo data must be string"),
+  body("bannerImageDataUrl")
+    .optional()
+    .isString()
+    .withMessage("Banner image data must be string"),
   body("serviceTypes")
     .optional()
     .isArray()

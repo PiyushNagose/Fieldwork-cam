@@ -2,16 +2,61 @@ const {
   findByAuthUserId,
   createUser,
   updateUser,
+  findUserByEmail,
 } = require("../repositories/user.repository");
 const { createStaffProfile } = require("../repositories/staff.repository");
 const {
   findByAuthUserId: findVendorByAuthUserId,
 } = require("../repositories/vendor.repository");
+const {
+  findStaffByAuthUserId,
+} = require("../repositories/staff.repository");
 const { publishEvent } = require("./publisher.service");
 const ApiError = require("../utils/apiError");
+const { saveDataUrlImage } = require("../utils/profileMediaStorage");
 
 const ROUTING_KEYS = {
   USER_PROFILE_CREATED: "user.profile.created",
+};
+
+const ensureLocalUserRecord = async (authPayload = {}) => {
+  const authUserId = authPayload?.userId || authPayload?.authUserId || "";
+
+  if (!authUserId) {
+    throw new ApiError("Unauthorized", 401);
+  }
+
+  const existingUser = await findByAuthUserId(authUserId);
+
+  if (existingUser) {
+    return existingUser;
+  }
+
+  const existingUserByEmail = authPayload?.email
+    ? await findUserByEmail(authPayload.email)
+    : null;
+
+  if (existingUserByEmail) {
+    return updateUser(existingUserByEmail.authUserId, {
+      authUserId,
+      phone: authPayload?.phone || existingUserByEmail.phone,
+      fullName: authPayload?.fullName || existingUserByEmail.fullName,
+      email: authPayload?.email || existingUserByEmail.email,
+      role: authPayload?.role || existingUserByEmail.role,
+      isVerified: true,
+      status: existingUserByEmail.status || "ACTIVE",
+    });
+  }
+
+  return createUser({
+    authUserId,
+    phone: authPayload?.phone || "",
+    fullName: authPayload?.fullName || "",
+    email: authPayload?.email || "",
+    role: authPayload?.role || "VENDOR_OWNER",
+    isVerified: true,
+    status: "ACTIVE",
+  });
 };
 
 const ensureUserFromAuthEvent = async (payload) => {
@@ -54,26 +99,56 @@ const ensureUserFromAuthEvent = async (payload) => {
   return user;
 };
 
-const getProfile = async (authUserId) => {
-  const user = await findByAuthUserId(authUserId);
+const getProfile = async (authPayload) => {
+  const authUserId = authPayload?.userId || authPayload?.authUserId || authPayload;
+  const user =
+    typeof authPayload === "object"
+      ? await ensureLocalUserRecord(authPayload)
+      : await findByAuthUserId(authUserId);
 
-  if (!user) return null;
+  if (!user) {
+    return null;
+  }
 
   const vendorProfile = await findVendorByAuthUserId(authUserId);
+  const staffProfile = await findStaffByAuthUserId(authUserId);
 
   return {
     user,
     vendorProfile,
-    profileCompleted: !!vendorProfile,
+    staffProfile,
+    profileCompleted: !!vendorProfile || !!staffProfile,
   };
 };
 
-const updateProfile = async (authUserId, payload) => {
-  const user = await findByAuthUserId(authUserId);
+const updateProfile = async (authPayload, payload) => {
+  const authUserId = authPayload?.userId || authPayload?.authUserId || authPayload;
+  const user =
+    typeof authPayload === "object"
+      ? await ensureLocalUserRecord(authPayload)
+      : await findByAuthUserId(authUserId);
 
   if (!user) {
     throw new ApiError("User not found", 404);
   }
+
+  const profilePhotoUrl =
+    payload.profilePhotoDataUrl && payload.publicBaseUrl
+      ? saveDataUrlImage({
+          dataUrl: payload.profilePhotoDataUrl,
+          prefix: `profile-${authUserId}`,
+          publicBaseUrl: payload.publicBaseUrl,
+        })
+      : payload.profilePhotoUrl ?? user.profilePhotoUrl;
+
+  const bannerImageUrl =
+    payload.bannerImageDataUrl && payload.publicBaseUrl
+      ? saveDataUrlImage({
+          dataUrl: payload.bannerImageDataUrl,
+          prefix: `banner-${authUserId}`,
+          publicBaseUrl: payload.publicBaseUrl,
+        })
+      : payload.bannerImageUrl ?? user.bannerImageUrl;
 
   const updatedUser = await updateUser(authUserId, {
     fullName: payload.fullName ?? user.fullName,
@@ -84,10 +159,13 @@ const updateProfile = async (authUserId, payload) => {
     department: payload.department ?? user.department,
     jobTitle: payload.jobTitle ?? user.jobTitle,
     bio: payload.bio ?? user.bio,
-    profilePhotoUrl: payload.profilePhotoUrl ?? user.profilePhotoUrl,
+    profilePhotoUrl,
+    bannerImageUrl,
     meta: {
       ...(user.meta || {}),
       ...(payload.meta || {}),
+      profilePhotoUrl,
+      bannerImageUrl,
     },
   });
 

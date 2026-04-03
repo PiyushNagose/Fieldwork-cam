@@ -46,8 +46,8 @@ const staffProfileSchema = new mongoose.Schema(
     },
     inviteMethod: {
       type: String,
-      enum: ["SMS", "Email"],
-      default: "SMS",
+      enum: ["SMS", "EMAIL"],
+      default: "EMAIL",
     },
     status: {
       type: String,

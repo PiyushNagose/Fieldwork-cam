@@ -10,7 +10,7 @@ const getProfile = asyncHandler(async (req, res) => {
     throw new ApiError("Unauthorized", 401);
   }
 
-  const profile = await userService.getProfile(authUserId);
+  const profile = await userService.getProfile(req.user);
 
   return successResponse(res, profile, "Profile fetched successfully", 200);
 });
@@ -22,7 +22,7 @@ const updateProfile = asyncHandler(async (req, res) => {
     throw new ApiError("Unauthorized", 401);
   }
 
-  const profile = await userService.updateProfile(authUserId, req.body);
+  const profile = await userService.updateProfile(req.user, req.body);
 
   return successResponse(res, profile, "Profile updated successfully", 200);
 });

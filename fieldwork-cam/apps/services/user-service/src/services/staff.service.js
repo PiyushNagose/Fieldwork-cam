@@ -1,3 +1,5 @@
+const axios = require("axios");
+const env = require("../config/env");
 const {
   createUser,
   findByAuthUserId,
@@ -7,9 +9,12 @@ const {
 
 const {
   createStaffProfile,
+  findStaffById,
   findStaffByVendor,
   findStaffByAuthUserId,
   updateStaffProfile,
+  updateStaffProfileById,
+  softDeleteStaff,
 } = require("../repositories/staff.repository");
 
 const ApiError = require("../utils/apiError");
@@ -21,7 +26,12 @@ const normalizeStatus = (value = "") => {
     : "ACTIVE";
 };
 
-const formatStaff = (staff, user = null) => {
+const normalizeInviteMethod = (value = "") => {
+  const method = String(value || "").toUpperCase().trim();
+  return ["SMS", "EMAIL"].includes(method) ? method : "EMAIL";
+};
+
+const formatStaff = (staff, user = null, meta = {}) => {
   const assignedProjectIds = Array.isArray(staff.assignedProjectIds)
     ? staff.assignedProjectIds
     : [];
@@ -36,7 +46,7 @@ const formatStaff = (staff, user = null) => {
     location: staff.location || user?.location || "",
     profilePhotoUrl: staff.profilePhotoUrl || user?.profilePhotoUrl || "",
     roleTitle: staff.roleTitle || user?.jobTitle || "",
-    inviteMethod: staff.inviteMethod || "SMS",
+    inviteMethod: normalizeInviteMethod(staff.inviteMethod),
     status: normalizeStatus(staff.status),
     specialties: Array.isArray(staff.specialties) ? staff.specialties : [],
     assignedProjectIds,
@@ -46,7 +56,25 @@ const formatStaff = (staff, user = null) => {
     lastActiveAt: staff.lastActiveAt || staff.updatedAt || staff.createdAt,
     createdAt: staff.createdAt,
     updatedAt: staff.updatedAt,
+    inviteLink: meta.inviteLink || "",
+    emailDelivery: meta.emailDelivery || null,
   };
+};
+
+const resolveStaffForVendor = async (vendorAuthUserId, staffIdentifier) => {
+  const staff =
+    (await findStaffByAuthUserId(staffIdentifier)) ||
+    (await findStaffById(staffIdentifier));
+
+  if (!staff) {
+    throw new ApiError("Staff member not found", 404);
+  }
+
+  if (staff.vendorAuthUserId !== vendorAuthUserId) {
+    throw new ApiError("Unauthorized staff access", 403);
+  }
+
+  return staff;
 };
 
 const ensureVendorOwner = async (vendorAuthUserId) => {
@@ -59,44 +87,87 @@ const ensureVendorOwner = async (vendorAuthUserId) => {
   return vendorUser;
 };
 
-const createStaff = async (vendorAuthUserId, payload) => {
-  await ensureVendorOwner(vendorAuthUserId);
+const inviteStaffAuthUser = async (payload) => {
+  if (!env.AUTH_SERVICE_URL) {
+    throw new ApiError("AUTH_SERVICE_URL not configured", 500);
+  }
 
-  let user = await findUserByEmail(payload.email);
-
-  if (!user) {
-    user = await createUser({
-      authUserId: `staff_${Date.now()}`,
-      fullName: payload.fullName,
+  try {
+    const authRes = await axios.post(`${env.AUTH_SERVICE_URL}/auth/invite-user`, {
       phone: payload.phone,
       email: payload.email,
       role: "STAFF",
-      isVerified: false,
-      status: normalizeStatus(payload.status),
-      location: payload.location || "",
-      profilePhotoUrl: payload.profilePhotoUrl || "",
-      jobTitle: payload.roleTitle || "",
+      inviteBaseUrl: payload.inviteBaseUrl,
+      fullName: payload.fullName,
+      companyName: payload.vendorCompanyName || "",
     });
-  } else {
-    user = await updateUser(user.authUserId, {
-      fullName: payload.fullName ?? user.fullName,
-      phone: payload.phone ?? user.phone,
-      email: payload.email ?? user.email,
-      location: payload.location ?? user.location,
-      profilePhotoUrl: payload.profilePhotoUrl ?? user.profilePhotoUrl,
-      jobTitle: payload.roleTitle ?? user.jobTitle,
-      status: normalizeStatus(payload.status || user.status),
-    });
+
+    return authRes.data?.data || authRes.data || {};
+  } catch (error) {
+    throw new ApiError(
+      error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to create staff auth invite",
+      error?.response?.status || 500,
+    );
+  }
+};
+
+const createStaff = async (vendorAuthUserId, payload) => {
+  const vendorUser = await ensureVendorOwner(vendorAuthUserId);
+  const inviteData = await inviteStaffAuthUser({
+    ...payload,
+    vendorCompanyName: vendorUser.fullName || "",
+  });
+
+  const authUser =
+    inviteData?.authUser ||
+    inviteData?.user ||
+    null;
+
+  const authUserId = authUser?._id || authUser?.id;
+
+  if (!authUserId) {
+    throw new ApiError("Invalid auth user response for staff invite", 500);
   }
 
-  const existing = await findStaffByAuthUserId(user.authUserId);
+  const existingUserByAuthId = await findByAuthUserId(authUserId);
+  const existingUserByEmail = await findUserByEmail(payload.email);
+  let user = existingUserByAuthId || existingUserByEmail || null;
+
+  const userPayload = {
+    authUserId,
+    fullName: payload.fullName,
+    phone: payload.phone,
+    email: payload.email,
+    role: "STAFF",
+    isVerified: false,
+    status: normalizeStatus(payload.status),
+    location: payload.location || "",
+    profilePhotoUrl: payload.profilePhotoUrl || "",
+    jobTitle: payload.roleTitle || "",
+  };
+
+  if (!user) {
+    user = await createUser(userPayload);
+  } else if (user.authUserId !== authUserId && existingUserByEmail) {
+    throw new ApiError("A staff member already exists with this email", 400);
+  } else {
+    user = await updateUser(user.authUserId, userPayload);
+  }
+
+  const existing = await findStaffByAuthUserId(authUserId);
 
   if (existing) {
+    if (existing.vendorAuthUserId !== vendorAuthUserId) {
+      throw new ApiError("Staff already exists for another vendor", 400);
+    }
+
     throw new ApiError("Staff already exists for this vendor", 400);
   }
 
   const staffProfile = await createStaffProfile({
-    authUserId: user.authUserId,
+    authUserId,
     vendorAuthUserId,
     fullName: payload.fullName,
     email: payload.email,
@@ -104,7 +175,7 @@ const createStaff = async (vendorAuthUserId, payload) => {
     location: payload.location || "",
     profilePhotoUrl: payload.profilePhotoUrl || "",
     roleTitle: payload.roleTitle,
-    inviteMethod: payload.inviteMethod || "EMAIL",
+    inviteMethod: normalizeInviteMethod(payload.inviteMethod),
     status: normalizeStatus(payload.status),
     specialties: payload.specialties || [],
     assignedProjectIds: [],
@@ -113,7 +184,10 @@ const createStaff = async (vendorAuthUserId, payload) => {
     lastActiveAt: new Date(),
   });
 
-  return formatStaff(staffProfile, user);
+  return formatStaff(staffProfile, user, {
+    inviteLink: inviteData?.inviteLink || "",
+    emailDelivery: inviteData?.emailDelivery || null,
+  });
 };
 
 const getVendorTeam = async (vendorAuthUserId, query = {}) => {
@@ -144,16 +218,7 @@ const getVendorTeam = async (vendorAuthUserId, query = {}) => {
 
 const getStaffDetails = async (vendorAuthUserId, staffAuthUserId) => {
   await ensureVendorOwner(vendorAuthUserId);
-
-  const staff = await findStaffByAuthUserId(staffAuthUserId);
-
-  if (!staff) {
-    throw new ApiError("Staff member not found", 404);
-  }
-
-  if (staff.vendorAuthUserId !== vendorAuthUserId) {
-    throw new ApiError("Unauthorized staff access", 403);
-  }
+  const staff = await resolveStaffForVendor(vendorAuthUserId, staffAuthUserId);
 
   return formatStaff(staff);
 };
@@ -163,15 +228,7 @@ const assignProjectToStaff = async (
   staffAuthUserId,
   projectId,
 ) => {
-  const staff = await findStaffByAuthUserId(staffAuthUserId);
-
-  if (!staff) {
-    throw new ApiError("Staff member not found", 404);
-  }
-
-  if (staff.vendorAuthUserId !== vendorAuthUserId) {
-    throw new ApiError("Unauthorized staff access", 403);
-  }
+  const staff = await resolveStaffForVendor(vendorAuthUserId, staffAuthUserId);
 
   const currentIds = Array.isArray(staff.assignedProjectIds)
     ? staff.assignedProjectIds
@@ -180,7 +237,7 @@ const assignProjectToStaff = async (
     ? currentIds
     : [...currentIds, projectId];
 
-  const updated = await updateStaffProfile(staffAuthUserId, {
+  const updated = await updateStaffProfileById(staff._id, {
     assignedProjectIds: nextIds,
     lastActiveAt: new Date(),
   });
@@ -189,22 +246,56 @@ const assignProjectToStaff = async (
 };
 
 const updateStaffStatus = async (vendorAuthUserId, staffAuthUserId, status) => {
-  const staff = await findStaffByAuthUserId(staffAuthUserId);
+  const staff = await resolveStaffForVendor(vendorAuthUserId, staffAuthUserId);
 
-  if (!staff) {
-    throw new ApiError("Staff member not found", 404);
-  }
-
-  if (staff.vendorAuthUserId !== vendorAuthUserId) {
-    throw new ApiError("Unauthorized", 403);
-  }
-
-  const updated = await updateStaffProfile(staffAuthUserId, {
+  const updated = await updateStaffProfileById(staff._id, {
     status: normalizeStatus(status),
     lastActiveAt: new Date(),
   });
 
   return formatStaff(updated);
+};
+
+const updateStaff = async (vendorAuthUserId, staffIdentifier, payload) => {
+  const staff = await resolveStaffForVendor(vendorAuthUserId, staffIdentifier);
+
+  const userPayload = {
+    fullName: payload.fullName,
+    phone: payload.phone,
+    email: payload.email,
+    location: payload.location || "",
+    profilePhotoUrl: payload.profilePhotoUrl || "",
+    jobTitle: payload.roleTitle || "",
+    status: normalizeStatus(payload.status || staff.status),
+  };
+
+  const updatedUser = await updateUser(staff.authUserId, userPayload);
+  const updatedStaff = await updateStaffProfileById(staff._id, {
+    fullName: payload.fullName,
+    phone: payload.phone,
+    email: payload.email,
+    location: payload.location || "",
+    profilePhotoUrl: payload.profilePhotoUrl || "",
+    roleTitle: payload.roleTitle || "",
+    status: normalizeStatus(payload.status || staff.status),
+    specialties: Array.isArray(payload.specialties)
+      ? payload.specialties
+      : staff.specialties || [],
+    lastActiveAt: new Date(),
+  });
+
+  return formatStaff(updatedStaff, updatedUser);
+};
+
+const removeStaff = async (vendorAuthUserId, staffIdentifier) => {
+  const staff = await resolveStaffForVendor(vendorAuthUserId, staffIdentifier);
+
+  await updateUser(staff.authUserId, {
+    status: "INACTIVE",
+  });
+
+  const removed = await softDeleteStaff(staff.authUserId);
+  return formatStaff(removed);
 };
 
 const getStaffStats = async (vendorAuthUserId) => {
@@ -243,6 +334,8 @@ module.exports = {
   getVendorTeam,
   getStaffDetails,
   assignProjectToStaff,
+  updateStaff,
   updateStaffStatus,
+  removeStaff,
   getStaffStats,
 };

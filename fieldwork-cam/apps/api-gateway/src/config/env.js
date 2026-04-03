@@ -16,6 +16,7 @@ const env = {
     process.env.BILLING_SERVICE_URL || "http://localhost:4008",
   SUBMISSION_SERVICE_URL:
     process.env.SUBMISSION_SERVICE_URL || "http://localhost:4009",
+  APP_WEB_URL: process.env.APP_WEB_URL || "http://localhost:5173",
 };
 
 module.exports = env;

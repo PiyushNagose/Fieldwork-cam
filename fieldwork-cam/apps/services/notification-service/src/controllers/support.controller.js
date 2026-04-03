@@ -4,7 +4,8 @@ const supportService = require("../services/support.service");
 
 const createTicket = asyncHandler(async (req, res) => {
   const data = await supportService.createSupportTicket(
-    req.user.userId,
+    req.user,
+    req.headers.authorization,
     req.body,
   );
 
@@ -12,7 +13,11 @@ const createTicket = asyncHandler(async (req, res) => {
 });
 
 const getTickets = asyncHandler(async (req, res) => {
-  const data = await supportService.getTickets(req.user, req.query);
+  const data = await supportService.getTickets(
+    req.user,
+    req.query,
+    req.headers.authorization,
+  );
 
   return successResponse(
     res,

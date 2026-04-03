@@ -25,6 +25,11 @@ import {
 import {
   getVendorProfileByAuthUserIdApi,
 } from "../../api/vendor.api";
+import { getProjectsApi } from "../../api/project.api";
+import { getInvoicesApi } from "../../api/invoice.api";
+import { getTicketsApi } from "../../api/support.api";
+import { getStaffApi } from "../../api/staff.api";
+import { getNotificationsApi } from "../../api/notification.api";
 import VendorEditProfileDialog from "./VendorEditProfileDialog";
 
 const statCards = [
@@ -57,6 +62,11 @@ const statCards = [
 
 export default function VendorProfilePage() {
   const [profile, setProfile] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openEdit, setOpenEdit] = useState(false);
@@ -65,8 +75,38 @@ export default function VendorProfilePage() {
     try {
       setLoading(true);
       setError("");
-      const response = await getVendorProfileByAuthUserIdApi();
-      setProfile(response?.data || response || null);
+      const [
+        profileResponse,
+        projectsResponse,
+        invoicesResponse,
+        ticketsResponse,
+        staffResponse,
+        notificationsResponse,
+      ] = await Promise.allSettled([
+        getVendorProfileByAuthUserIdApi(),
+        getProjectsApi(),
+        getInvoicesApi(),
+        getTicketsApi(),
+        getStaffApi(),
+        getNotificationsApi(),
+      ]);
+
+      const unwrap = (result) =>
+        result.status === "fulfilled" ? result.value?.data || result.value || [] : [];
+
+      const profileData =
+        profileResponse.status === "fulfilled"
+          ? profileResponse.value?.data || profileResponse.value || null
+          : null;
+
+      setProfile(profileData);
+      setProjects(Array.isArray(unwrap(projectsResponse)) ? unwrap(projectsResponse) : []);
+      setInvoices(Array.isArray(unwrap(invoicesResponse)) ? unwrap(invoicesResponse) : []);
+      setTickets(Array.isArray(unwrap(ticketsResponse)) ? unwrap(ticketsResponse) : []);
+      setStaff(Array.isArray(unwrap(staffResponse)) ? unwrap(staffResponse) : []);
+      setNotifications(
+        Array.isArray(unwrap(notificationsResponse)) ? unwrap(notificationsResponse) : [],
+      );
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -75,6 +115,11 @@ export default function VendorProfilePage() {
           "Failed to load vendor profile",
       );
       setProfile(null);
+      setProjects([]);
+      setInvoices([]);
+      setTickets([]);
+      setStaff([]);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -86,17 +131,124 @@ export default function VendorProfilePage() {
 
   const user = useMemo(() => profile?.user || {}, [profile]);
   const meta = useMemo(() => profile?.meta || {}, [profile]);
-  const stats = useMemo(() => profile?.stats || {}, [profile]);
-  const activity = useMemo(() => profile?.recentActivity || [], [profile]);
+  const stats = useMemo(() => {
+    const completedProjects = projects.filter((item) =>
+      ["Approved", "Completed"].includes(item.status),
+    ).length;
+    const activeProjects = projects.filter((item) =>
+      ["New", "In Progress", "Submitted", "Retake Requested"].includes(item.status),
+    ).length;
+    const submittedProjects = projects.filter((item) =>
+      ["Submitted", "Approved", "Completed", "Rejected"].includes(item.status),
+    ).length;
+    const approvedProjects = projects.filter((item) =>
+      ["Approved", "Completed"].includes(item.status),
+    ).length;
+
+    return {
+      totalProjects: projects.length,
+      totalCompleted: completedProjects,
+      totalActiveProjects: activeProjects,
+      approvalRate: submittedProjects
+        ? (approvedProjects / submittedProjects) * 5
+        : Number(profile?.stats?.approvalRate || 0),
+    };
+  }, [profile?.stats?.approvalRate, projects]);
+
+  const activity = useMemo(() => {
+    const notificationActivity = [...notifications]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || b.updatedAt).getTime() -
+          new Date(a.createdAt || a.updatedAt).getTime(),
+      )
+      .slice(0, 5)
+      .map((item) => ({
+        id: item._id || item.id,
+        title: item.title || "Notification",
+        subtitle: item.message || "",
+        timeAgo: formatRelativeTime(item.createdAt || item.updatedAt),
+        color: activityColor(item.type || item.entityType),
+      }));
+
+    if (notificationActivity.length) {
+      return notificationActivity;
+    }
+
+    return [
+      ...tickets.map((item) => ({
+        id: `ticket-${item._id || item.id}`,
+        title: item.subject || item.title || "Support ticket updated",
+        subtitle: item.statusLabel || item.status || "Ticket activity",
+        timeAgo: formatRelativeTime(item.updatedAt || item.createdAt),
+        color: "#F59E0B",
+        sortTime: new Date(item.updatedAt || item.createdAt).getTime(),
+      })),
+      ...projects.map((item) => ({
+        id: `project-${item._id || item.id}`,
+        title: `${item.title || "Project"} ${vendorProjectVerb(item.status)}`,
+        subtitle: item.workOrderNumber || item.serviceType || "Project activity",
+        timeAgo: formatRelativeTime(item.updatedAt || item.createdAt),
+        color: "#3B82F6",
+        sortTime: new Date(item.updatedAt || item.createdAt).getTime(),
+      })),
+    ]
+      .filter((item) => !Number.isNaN(item.sortTime))
+      .sort((a, b) => b.sortTime - a.sortTime)
+      .slice(0, 5)
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        timeAgo: item.timeAgo,
+        color: item.color,
+      }));
+  }, [notifications, projects, tickets]);
+
   const recentProjects = useMemo(
-    () => profile?.recentProjects || [],
-    [profile],
+    () =>
+      [...projects]
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt || b.createdAt).getTime() -
+            new Date(a.updatedAt || a.createdAt).getTime(),
+        )
+        .slice(0, 4)
+        .map((project) => {
+          const linkedInvoice = invoices.find((item) => item.projectId === (project._id || project.id));
+          const pendingAmount =
+            linkedInvoice && String(linkedInvoice.status || "").toUpperCase() !== "PAID"
+              ? Number(linkedInvoice.totalDue || linkedInvoice.amount || 0)
+              : 0;
+
+          return {
+            id: project.workOrderNumber || project._id || project.id,
+            clientName: project.clientName || "Client",
+            projectName: project.title || "Untitled Project",
+            amount: Number(linkedInvoice?.totalDue || linkedInvoice?.amount || 0),
+            pendingAmount,
+          };
+        }),
+    [invoices, projects],
   );
-  const quickInfo = useMemo(() => profile?.quickInfo || [], [profile]);
+
+  const quickInfo = useMemo(
+    () => [
+      { label: "Company", value: meta?.companyName || "" },
+      { label: "Website", value: meta?.website || "" },
+      { label: "Location", value: user?.location || meta?.serviceArea || meta?.address || "" },
+      { label: "Member Since", value: meta?.memberSince || user?.createdAt || null },
+      {
+        label: "Team Size",
+        value: staff.length ? `${staff.length} photographers` : "",
+      },
+    ],
+    [meta?.address, meta?.companyName, meta?.memberSince, meta?.serviceArea, meta?.website, staff.length, user?.createdAt, user?.location],
+  );
 
   const fullName = user?.fullName || "Vendor User";
   const companyName = meta?.companyName || "";
-  const jobTitle = user?.jobTitle || meta?.jobTitle || "Vendor Partner";
+  const jobTitle = user?.jobTitle || meta?.jobTitle || "";
   const bio = user?.bio || meta?.bio || "";
   const email = user?.email || meta?.businessEmail || "";
   const phone = user?.phone || meta?.businessPhone || "";
@@ -105,6 +257,7 @@ export default function VendorProfilePage() {
   const serviceTypes = meta?.serviceTypes || [];
   const joinedAt = meta?.memberSince || user?.createdAt;
   const avatarUrl = user?.profilePhotoUrl || meta?.profilePhotoUrl || "";
+  const bannerImageUrl = user?.bannerImageUrl || meta?.bannerImageUrl || "";
   const isActive = String(user?.status || "").toUpperCase() === "ACTIVE";
 
   if (loading) {
@@ -147,15 +300,16 @@ export default function VendorProfilePage() {
         <Box
           sx={{
             height: 132,
-            background:
-              "linear-gradient(180deg, rgba(247,247,247,1) 0%, rgba(224,224,224,1) 100%)",
+            background: bannerImageUrl
+              ? `center / cover no-repeat url(${bannerImageUrl})`
+              : "linear-gradient(180deg, rgba(247,247,247,1) 0%, rgba(224,224,224,1) 100%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             color: "#1F2937",
           }}
         >
-          <ImageOutlined sx={{ fontSize: 56, opacity: 0.85 }} />
+          {!bannerImageUrl ? <ImageOutlined sx={{ fontSize: 56, opacity: 0.85 }} /> : null}
         </Box>
 
         <Box sx={{ px: { xs: 2, md: 2.5 }, pb: 2.25 }}>
@@ -661,6 +815,36 @@ function formatCurrency(value) {
 function formatRating(value) {
   const amount = Number(value ?? 0);
   return Number.isFinite(amount) ? amount.toFixed(1) : "0.0";
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  if (Number.isNaN(diffMs)) return "";
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+}
+
+function activityColor(type = "") {
+  const normalized = String(type || "").toUpperCase();
+  if (normalized.includes("PAYMENT") || normalized.includes("INVOICE")) return "#22C55E";
+  if (normalized.includes("SUPPORT")) return "#F59E0B";
+  if (normalized.includes("STAFF")) return "#8B5CF6";
+  return "#3B82F6";
+}
+
+function vendorProjectVerb(status = "") {
+  if (status === "Submitted") return "submitted";
+  if (status === "Approved") return "approved";
+  if (status === "Completed") return "completed";
+  if (status === "Retake Requested") return "needs retake";
+  if (status === "In Progress") return "in progress";
+  return "updated";
 }
 
 function EmptyState({ label, compact = false }) {

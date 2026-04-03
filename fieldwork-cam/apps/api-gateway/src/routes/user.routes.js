@@ -3,8 +3,27 @@ const { SERVICES } = require("../config/services");
 const { forwardRequest } = require("../services/proxy.service");
 const { asyncHandler } = require("../utils/asyncHandler");
 const authMiddleware = require("../middlewares/auth.middleware");
+const httpClient = require("../utils/httpClient");
 
 const router = express.Router();
+
+router.get(
+  "/uploads/:folder/:fileName",
+  asyncHandler(async (req, res) => {
+    const upstreamResponse = await httpClient.get(
+      `${SERVICES.USER}/uploads/${req.params.folder}/${req.params.fileName}`,
+      {
+        responseType: "stream",
+      },
+    );
+
+    if (upstreamResponse.headers["content-type"]) {
+      res.setHeader("content-type", upstreamResponse.headers["content-type"]);
+    }
+
+    upstreamResponse.data.pipe(res);
+  }),
+);
 
 router.get(
   "/profile",
@@ -29,7 +48,10 @@ router.put(
     const data = await forwardRequest({
       method: "put",
       url: `${SERVICES.USER}/users/profile`,
-      data: req.body,
+      data: {
+        ...req.body,
+        publicBaseUrl: `${req.protocol}://${req.get("host")}/api`,
+      },
       headers: {
         authorization: req.headers.authorization,
       },

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -17,10 +17,15 @@ import {
   AddPhotoAlternateOutlined,
   AttachFileOutlined,
   CalendarMonthOutlined,
+  ImageOutlined,
   LocationOnOutlined,
   PersonOutlineOutlined,
 } from "@mui/icons-material";
-import { createProjectApi } from "../../api/project.api";
+import {
+  createProjectApi,
+  getProjectByIdApi,
+  updateProjectApi,
+} from "../../api/project.api";
 import { getServicesApi } from "../../api/service.api";
 import { getVendorsApi } from "../../api/vendor.api";
 
@@ -36,6 +41,8 @@ const generateWorkOrderNumber = () => {
 
 export default function CreateProjectPage() {
   const navigate = useNavigate();
+  const { projectId } = useParams();
+  const isEditMode = Boolean(projectId);
   const [form, setForm] = useState({
     title: "",
     clientName: "",
@@ -48,13 +55,15 @@ export default function CreateProjectPage() {
     priority: "Medium",
     checklist: [],
   });
-  const [referencePhotos, setReferencePhotos] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [coverImageDataUrl, setCoverImageDataUrl] = useState("");
+  const [coverImageName, setCoverImageName] = useState("");
   const [services, setServices] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [initialWorkOrderNumber, setInitialWorkOrderNumber] = useState("");
 
   useEffect(() => {
     const fetchDependencies = async () => {
@@ -62,16 +71,53 @@ export default function CreateProjectPage() {
         setPageLoading(true);
         setError("");
 
-        const [servicesResponse, vendorsResponse] = await Promise.all([
-          getServicesApi(),
-          getVendorsApi(),
-        ]);
+        const requests = [getServicesApi(), getVendorsApi()];
+
+        if (isEditMode) {
+          requests.push(getProjectByIdApi(projectId));
+        }
+
+        const [servicesResponse, vendorsResponse, projectResponse] =
+          await Promise.all(requests);
 
         const serviceData = servicesResponse?.data || servicesResponse || [];
         const vendorData = vendorsResponse?.data || vendorsResponse || [];
 
         setServices(Array.isArray(serviceData) ? serviceData : []);
         setVendors(Array.isArray(vendorData) ? vendorData : []);
+
+        if (isEditMode) {
+          const project = projectResponse?.data || projectResponse || null;
+
+          if (project) {
+            setInitialWorkOrderNumber(project.workOrderNumber || "");
+            setCoverImageDataUrl(project.coverImageUrl || "");
+            setCoverImageName(project.coverImageUrl ? "Current project cover" : "");
+            setAttachments([]);
+            setForm({
+              title: project.title || "",
+              clientName: project.clientName || "",
+              serviceId: project.serviceId || "",
+              serviceType: project.serviceType || "",
+              assignedVendorAuthUserId: project.assignedVendorAuthUserId || "",
+              dueDate: project.dueDate
+                ? new Date(project.dueDate).toISOString().split("T")[0]
+                : "",
+              address: project.address || "",
+              description: project.description || "",
+              priority: project.priority || "Medium",
+              checklist: Array.isArray(project.checklist)
+                ? project.checklist.map((item, index) => ({
+                    id: `${item.title || "item"}-${index}`,
+                    title: item.title || "",
+                    required: Boolean(item.required),
+                    captureType: item.captureType || "STANDARD",
+                    completed: Boolean(item.completed),
+                  }))
+                : [],
+            });
+          }
+        }
       } catch (err) {
         setError(
           err?.response?.data?.message ||
@@ -85,12 +131,25 @@ export default function CreateProjectPage() {
     };
 
     fetchDependencies();
-  }, []);
+  }, [isEditMode, projectId]);
 
   const completedCount = useMemo(
     () => form.checklist.filter((item) => item.completed).length,
     [form.checklist],
   );
+
+  const handleCoverImageChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCoverImageDataUrl(String(reader.result || ""));
+      setCoverImageName(file.name);
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
 
   const handleFieldChange = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -142,8 +201,8 @@ export default function CreateProjectPage() {
       }
       if (!form.address.trim()) throw new Error("Location is required");
 
-      await createProjectApi({
-        workOrderNumber: generateWorkOrderNumber(),
+      const payload = {
+        workOrderNumber: initialWorkOrderNumber || generateWorkOrderNumber(),
         title: form.title.trim(),
         clientName: form.clientName.trim(),
         serviceId: form.serviceId,
@@ -153,9 +212,14 @@ export default function CreateProjectPage() {
         address: form.address.trim(),
         description: form.description.trim(),
         priority: form.priority,
-        coverImageUrl: referencePhotos[0]?.name || "",
+        coverImageUrl: coverImageDataUrl && !coverImageDataUrl.startsWith("data:")
+          ? coverImageDataUrl
+          : "",
+        coverImageDataUrl:
+          coverImageDataUrl && coverImageDataUrl.startsWith("data:")
+            ? coverImageDataUrl
+            : undefined,
         attachments: [
-          ...referencePhotos.map((file) => file.name),
           ...attachments.map((file) => file.name),
         ],
         checklist: form.checklist.map((item) => ({
@@ -164,7 +228,13 @@ export default function CreateProjectPage() {
           captureType: item.captureType,
           completed: item.completed,
         })),
-      });
+      };
+
+      if (isEditMode) {
+        await updateProjectApi(projectId, payload);
+      } else {
+        await createProjectApi(payload);
+      }
 
       navigate("/admin/projects");
     } catch (err) {
@@ -172,7 +242,7 @@ export default function CreateProjectPage() {
         err?.response?.data?.message ||
           err?.response?.data?.error ||
           err?.message ||
-          "Failed to create project",
+          `Failed to ${isEditMode ? "update" : "create"} project`,
       );
     } finally {
       setSubmitting(false);
@@ -184,7 +254,7 @@ export default function CreateProjectPage() {
       <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 320 }} spacing={2}>
         <CircularProgress />
         <Typography sx={{ fontSize: 13, color: "#8E8882" }}>
-          Loading project dependencies...
+          Loading project data...
         </Typography>
       </Stack>
     );
@@ -208,10 +278,12 @@ export default function CreateProjectPage() {
           letterSpacing: "-0.02em",
         }}
       >
-        Create New Project
+        {isEditMode ? "Edit Project" : "Create New Project"}
       </Typography>
       <Typography sx={{ mt: 0.45, color: "#9CA3AF", fontSize: 13, fontWeight: 500 }}>
-        Initiate a new operation site by filling out the details below. All fields marked with * are required.
+        {isEditMode
+          ? "Update the operation details below and keep the project aligned with the current workflow."
+          : "Initiate a new operation site by filling out the details below. All fields marked with * are required."}
       </Typography>
 
       <Stack spacing={1.5} sx={{ mt: 2 }}>
@@ -329,6 +401,62 @@ export default function CreateProjectPage() {
             </Grid>
 
             <Grid item xs={12}>
+              <Box
+                sx={{
+                  border: "1px solid #E9E1DB",
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  bgcolor: "#FBF8F6",
+                }}
+              >
+                <Box
+                  sx={{
+                    height: 168,
+                    background: coverImageDataUrl
+                      ? `center / cover no-repeat url(${coverImageDataUrl})`
+                      : "linear-gradient(180deg, rgba(247,247,247,1) 0%, rgba(224,224,224,1) 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#B0B5BE",
+                  }}
+                >
+                  {!coverImageDataUrl ? <ImageOutlined sx={{ fontSize: 42 }} /> : null}
+                </Box>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  spacing={1}
+                  sx={{ px: 1.5, py: 1.25 }}
+                >
+                  <Box>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>
+                      Project Cover Image
+                    </Typography>
+                    <Typography sx={{ mt: 0.35, fontSize: 11.5, color: "#9CA3AF" }}>
+                      {coverImageName || "Upload a cover image for cards and project details."}
+                    </Typography>
+                  </Box>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<AddPhotoAlternateOutlined sx={{ fontSize: 16 }} />}
+                    sx={{ ...outlineMiniButtonSx, minWidth: 132 }}
+                  >
+                    {coverImageDataUrl ? "Change Cover" : "Upload Cover"}
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleCoverImageChange}
+                    />
+                  </Button>
+                </Stack>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
               <Box sx={mapPreviewSx}>
                 <LocationOnOutlined sx={{ fontSize: 20, color: "#D0C4BB" }} />
                 <Typography sx={{ mt: 0.6, fontSize: 11.5, color: "#BBB1A9", fontWeight: 500 }}>
@@ -339,10 +467,7 @@ export default function CreateProjectPage() {
           </Grid>
         </SectionCard>
 
-        <SectionCard
-          title="Photo Checklist"
-          rightText={`${completedCount} of ${form.checklist.length} completed`}
-        >
+        <SectionCard title="Photo Checklist" rightText={`${completedCount} of ${form.checklist.length} completed`}>
           <Stack spacing={0.3}>
             {form.checklist.length ? (
               form.checklist.map((item) => (
@@ -377,32 +502,9 @@ export default function CreateProjectPage() {
             )}
           </Stack>
 
-          <Button component="label" variant="outlined" startIcon={<AddPhotoAlternateOutlined />} sx={uploadButtonSx}>
-            Upload Photos
-            <input
-              type="file"
-              hidden
-              accept="image/*"
-              multiple
-              onChange={(event) => {
-                setReferencePhotos(Array.from(event.target.files || []));
-              }}
-            />
-          </Button>
-
           <Typography sx={helperTextSx}>
-            Selected photo names are saved with the project brief for reference.
+            Checklist items here define what the vendor and mobile flow will capture later.
           </Typography>
-
-          {referencePhotos.length ? (
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-              {referencePhotos.map((file) => (
-                <Box key={file.name} sx={filePillSx}>
-                  {file.name}
-                </Box>
-              ))}
-            </Stack>
-          ) : null}
         </SectionCard>
 
         <SectionCard title="Project Description">
@@ -455,7 +557,13 @@ export default function CreateProjectPage() {
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={submitting} sx={submitButtonSx}>
-            {submitting ? "Initiating..." : "Initiate Project"}
+            {submitting
+              ? isEditMode
+                ? "Saving..."
+                : "Initiating..."
+              : isEditMode
+                ? "Save Changes"
+                : "Initiate Project"}
           </Button>
         </Stack>
       </Stack>
@@ -555,6 +663,23 @@ const uploadButtonSx = {
   color: "#6B7280",
   textTransform: "none",
   fontSize: 12.5,
+  fontWeight: 600,
+  boxShadow: "none",
+  "&:hover": {
+    borderColor: "#DED3CB",
+    bgcolor: "#FCFAF8",
+    boxShadow: "none",
+  },
+};
+
+const outlineMiniButtonSx = {
+  minHeight: 34,
+  borderRadius: 1,
+  borderColor: "#E8E1DA",
+  color: "#837E78",
+  bgcolor: "#FFFFFF",
+  textTransform: "none",
+  fontSize: 11.5,
   fontWeight: 600,
   boxShadow: "none",
   "&:hover": {

@@ -4,6 +4,7 @@ const validateMiddleware = require("../middlewares/validate.middleware");
 const projectController = require("../controllers/project.controller");
 const {
   createProjectValidator,
+  updateProjectValidator,
   updateProjectStatusValidator,
 } = require("../validators/project.validator");
 const { addProjectNoteValidator } = require("../validators/note.validator");
@@ -17,6 +18,14 @@ const router = express.Router();
 router.get("/", authMiddleware, projectController.getProjects);
 
 router.get("/:projectId", authMiddleware, projectController.getProjectById);
+
+router.put(
+  "/:projectId",
+  authMiddleware,
+  updateProjectValidator,
+  validateMiddleware,
+  projectController.updateProject,
+);
 
 router.post(
   "/create",
@@ -42,6 +51,7 @@ router.post(
 
 router.post(
   "/:projectId/assign-vendor",
+  authMiddleware,
   assignVendorValidator,
   validateMiddleware,
   projectController.assignVendor,
@@ -49,6 +59,7 @@ router.post(
 
 router.post(
   "/:projectId/assign-staff",
+  authMiddleware,
   assignStaffValidator,
   validateMiddleware,
   projectController.assignStaff,
@@ -60,6 +71,12 @@ router.patch(
   updateProjectStatusValidator,
   validateMiddleware,
   projectController.updateProjectStatus,
+);
+
+router.delete(
+  "/:projectId",
+  authMiddleware,
+  projectController.deleteProject,
 );
 
 module.exports = router;

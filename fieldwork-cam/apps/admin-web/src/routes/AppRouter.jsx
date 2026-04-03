@@ -11,6 +11,7 @@ import AdminDashboardPage from "../pages/admin/DashboardPage";
 import VendorDashboardPage from "../pages/vendor/VendorDashboardPage";
 import ProjectPage from "../pages/admin/ProjectPage";
 import CreateProjectPage from "../pages/admin/CreateProjectPage";
+import AdminProjectDetailsPage from "../pages/admin/AdminProjectDetailsPage";
 import VendorPage from "../pages/admin/VendorPage";
 import VendorDetailsPage from "../pages/admin/VendorDetailsPage";
 import InvoicesPages from "../pages/admin/InvoicesPage";
@@ -30,6 +31,7 @@ import VendorProfilePage from "../pages/vendor/VendorProfilePage";
 import VendorSupportPage from "../pages/vendor/VendorSupportPage";
 import VendorEarningsPage from "../pages/vendor/VendorEarningsPage";
 import VendorPerformancePage from "../pages/vendor/VendorPerformancePage";
+import VendorInvoicesPage from "../pages/vendor/VendorInvoicesPage";
 
 function PlaceholderPage({ title }) {
   return (
@@ -54,6 +56,8 @@ export default function AppRouter() {
               <Route path="dashboard" element={<AdminDashboardPage />} />
               <Route path="projects" element={<ProjectPage />} />
               <Route path="projects/new" element={<CreateProjectPage />} />
+              <Route path="projects/:projectId" element={<AdminProjectDetailsPage />} />
+              <Route path="projects/:projectId/edit" element={<CreateProjectPage />} />
               <Route path="vendors" element={<VendorPage />} />
               <Route path="vendors/:vendorId" element={<VendorDetailsPage />} />
               <Route path="invoices" element={<InvoicesPages />} />
@@ -80,10 +84,7 @@ export default function AppRouter() {
                 element={<VendorProjectDetailsScreen />}
               />
               <Route path="staff" element={<StaffPage />} />
-              <Route
-                path="invoices"
-                element={<PlaceholderPage title="Invoices" />}
-              />
+              <Route path="invoices" element={<VendorInvoicesPage />} />
               <Route
                 path="earnings"
                 element={<VendorEarningsPage />}

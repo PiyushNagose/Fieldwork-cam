@@ -26,6 +26,7 @@ import {
   PhoneOutlined,
   PublicOutlined,
   WorkOutlineOutlined,
+  ImageOutlined,
 } from "@mui/icons-material";
 import { updateVendorProfileApi } from "../../api/vendor.api";
 
@@ -65,6 +66,7 @@ export default function VendorEditProfileDialog({
     timezone: "",
     bio: "",
     profilePhotoUrl: "",
+    bannerImageUrl: "",
     serviceTypesText: "",
   });
   const [error, setError] = useState("");
@@ -93,6 +95,10 @@ export default function VendorEditProfileDialog({
       bio: profile?.user?.bio || profile?.meta?.bio || "",
       profilePhotoUrl:
         profile?.user?.profilePhotoUrl || profile?.meta?.profilePhotoUrl || "",
+      bannerImageUrl:
+        profile?.user?.bannerImageUrl ||
+        profile?.meta?.bannerImageUrl ||
+        "",
       serviceTypesText: (profile?.meta?.serviceTypes || []).join(", "),
     });
 
@@ -113,6 +119,21 @@ export default function VendorEditProfileDialog({
       ...prev,
       [key]: event.target.value,
     }));
+  };
+
+  const handleImageChange = (key) => async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((prev) => ({
+        ...prev,
+        [key]: String(reader.result || ""),
+      }));
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
   };
 
   const handleSave = async () => {
@@ -138,7 +159,18 @@ export default function VendorEditProfileDialog({
         jobTitle: form.jobTitle,
         timezone: form.timezone,
         bio: form.bio,
-        profilePhotoUrl: form.profilePhotoUrl,
+        profilePhotoUrl: form.profilePhotoUrl.startsWith("data:")
+          ? undefined
+          : form.profilePhotoUrl,
+        profilePhotoDataUrl: form.profilePhotoUrl.startsWith("data:")
+          ? form.profilePhotoUrl
+          : undefined,
+        bannerImageUrl: form.bannerImageUrl.startsWith("data:")
+          ? undefined
+          : form.bannerImageUrl,
+        bannerImageDataUrl: form.bannerImageUrl.startsWith("data:")
+          ? form.bannerImageUrl
+          : undefined,
         serviceTypes,
         meta: {
           firstName: form.firstName,
@@ -147,7 +179,12 @@ export default function VendorEditProfileDialog({
           jobTitle: form.jobTitle,
           timezone: form.timezone,
           bio: form.bio,
-          profilePhotoUrl: form.profilePhotoUrl,
+          profilePhotoUrl: form.profilePhotoUrl.startsWith("data:")
+            ? undefined
+            : form.profilePhotoUrl,
+          bannerImageUrl: form.bannerImageUrl.startsWith("data:")
+            ? undefined
+            : form.bannerImageUrl,
           companyName: form.companyName,
           website: form.website,
           address: form.address,
@@ -238,17 +275,68 @@ export default function VendorEditProfileDialog({
                 JPG or PNG. Max 5MB.
               </Typography>
               <Typography
+                component="label"
                 sx={{
                   mt: 0.7,
                   fontSize: 12.5,
                   fontWeight: 600,
                   color: "#D88B72",
+                  display: "inline-flex",
+                  cursor: "pointer",
                 }}
               >
                 Upload new photo
+                <input hidden accept="image/png,image/jpeg,image/webp" type="file" onChange={handleImageChange("profilePhotoUrl")} />
               </Typography>
             </Box>
           </Stack>
+
+          <Box
+            sx={{
+              mt: 1.6,
+              border: "1px dashed #E6DDD7",
+              borderRadius: 1,
+              overflow: "hidden",
+              bgcolor: "#FCFAF8",
+            }}
+          >
+            <Box
+              sx={{
+                height: 92,
+                background: form.bannerImageUrl
+                  ? `center / cover no-repeat url(${form.bannerImageUrl})`
+                  : "linear-gradient(180deg, rgba(247,247,247,1) 0%, rgba(224,224,224,1) 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#B0B5BE",
+              }}
+            >
+              {!form.bannerImageUrl ? <ImageOutlined sx={{ fontSize: 28 }} /> : null}
+            </Box>
+            <Box sx={{ px: 1.5, py: 1.2 }}>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "#1F2937" }}>
+                Banner Image
+              </Typography>
+              <Typography sx={{ mt: 0.25, fontSize: 11.5, color: "#9CA3AF" }}>
+                JPG or PNG. Recommended wide image.
+              </Typography>
+              <Typography
+                component="label"
+                sx={{
+                  mt: 0.75,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#D88B72",
+                  display: "inline-flex",
+                  cursor: "pointer",
+                }}
+              >
+                Upload banner
+                <input hidden accept="image/png,image/jpeg,image/webp" type="file" onChange={handleImageChange("bannerImageUrl")} />
+              </Typography>
+            </Box>
+          </Box>
 
           <Tabs
             value={tab}

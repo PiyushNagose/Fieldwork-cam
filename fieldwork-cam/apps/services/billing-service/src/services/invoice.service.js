@@ -4,6 +4,37 @@ const {
   findInvoiceByProjectId,
   findInvoiceById,
 } = require("../repositories/invoice.repository");
+const env = require("../config/env");
+const { createNotifications } = require("./notification.service");
+
+const buildError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
+const sendNotifications = async (items = []) => {
+  try {
+    await createNotifications(items);
+  } catch (error) {
+    console.error("Invoice notification error:", error.message);
+  }
+};
+
+const getProject = async (projectId, authHeader) => {
+  const response = await fetch(`${env.PROJECT_SERVICE_URL}/projects/${projectId}`, {
+    headers: {
+      authorization: authHeader || "",
+    },
+  });
+
+  if (!response.ok) {
+    throw buildError("Failed to fetch linked project for invoice", 400);
+  }
+
+  const data = await response.json();
+  return data?.data || data || null;
+};
 
 const getInvoicesService = async (query = {}) => {
   const invoices = await findInvoices({
@@ -54,7 +85,43 @@ const normalizeLineItems = (lineItems = []) =>
     })
     .filter((item) => item.description || item.amount);
 
-const createInvoiceService = async (vendorAuthUserId, payload) => {
+const createInvoiceService = async (authUser, payload, authHeader) => {
+  const authRole = String(authUser?.role || "").toUpperCase();
+  const isAdmin = authRole === "ADMIN";
+  const isVendor = authRole === "VENDOR_OWNER";
+
+  if (!isAdmin && !isVendor) {
+    throw buildError("You are not allowed to create invoices", 403);
+  }
+
+  const project = await getProject(payload.projectId, authHeader);
+
+  if (!project) {
+    throw buildError("Project not found for invoice", 404);
+  }
+
+  if (!["Approved", "Completed"].includes(project.status)) {
+    throw buildError(
+      "Invoice can only be created for approved or completed projects",
+      400,
+    );
+  }
+
+  if (
+    payload.vendorAuthUserId &&
+    project.assignedVendorAuthUserId &&
+    payload.vendorAuthUserId !== project.assignedVendorAuthUserId
+  ) {
+    throw buildError(
+      "Invoice vendor does not match the assigned project vendor",
+      400,
+    );
+  }
+
+  if (isVendor && project.assignedVendorAuthUserId !== authUser?.userId) {
+    throw buildError("You can only create invoices for your assigned projects", 403);
+  }
+
   const lineItems = normalizeLineItems(payload.lineItems);
   const derivedSubtotal = Number(
     lineItems.reduce((sum, item) => sum + Number(item.amount || 0), 0).toFixed(2),
@@ -83,14 +150,16 @@ const createInvoiceService = async (vendorAuthUserId, payload) => {
     ).toFixed(2),
   );
 
-  return createInvoice({
+  const requestedStatus = String(payload.status || "PENDING").toUpperCase();
+  const invoice = await createInvoice({
     invoiceNumber: payload.invoiceNumber,
     projectId: payload.projectId,
     projectName: payload.projectName || "",
     projectCode: payload.projectCode || "",
-    vendorAuthUserId: payload.vendorAuthUserId || vendorAuthUserId || "",
+    vendorAuthUserId:
+      payload.vendorAuthUserId || project.assignedVendorAuthUserId || "",
     vendorName: payload.vendorName || "",
-    billToClient: payload.billToClient || "",
+    billToClient: payload.billToClient || project.clientName || "",
     invoiceDate: payload.invoiceDate || new Date(),
     dueDate: payload.dueDate || null,
     lineItems,
@@ -101,10 +170,52 @@ const createInvoiceService = async (vendorAuthUserId, payload) => {
     totalDue,
     notes: payload.notes || "",
     paymentDate: payload.paymentDate || null,
-    status: payload.status || "PENDING",
+    status: isAdmin ? requestedStatus : "PENDING",
     paymentTerms: payload.paymentTerms || "Net 14",
     signatureName: payload.signatureName || "",
   });
+
+  if ((invoice.status || "").toUpperCase() === "PAID") {
+    await fetch(`${env.PROJECT_SERVICE_URL}/projects/${project.projectId || project._id || payload.projectId}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        authorization: authHeader || "",
+      },
+      body: JSON.stringify({ status: "Completed" }),
+    }).catch(() => null);
+  }
+
+  await sendNotifications([
+    authUser?.userId
+      ? {
+          userId: authUser.userId,
+          type: "INVOICE",
+          title: "Invoice created",
+          message: `${invoice.invoiceNumber || "A new invoice"} was created`,
+          meta: {
+            invoiceId: String(invoice._id),
+            projectId: invoice.projectId,
+            invoiceNumber: invoice.invoiceNumber,
+          },
+        }
+      : null,
+    invoice.vendorAuthUserId && invoice.vendorAuthUserId !== authUser?.userId
+      ? {
+          userId: invoice.vendorAuthUserId,
+          type: "PAYMENT",
+          title: "New invoice available",
+          message: `${invoice.invoiceNumber || "A new invoice"} is ready for review`,
+          meta: {
+            invoiceId: String(invoice._id),
+            projectId: invoice.projectId,
+            invoiceNumber: invoice.invoiceNumber,
+          },
+        }
+      : null,
+  ]);
+
+  return invoice;
 };
 
 const getInvoiceByProjectService = async (projectId) => {

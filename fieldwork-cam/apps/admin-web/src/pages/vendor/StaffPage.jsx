@@ -31,6 +31,7 @@ const FILTERS = ["All", "Active", "On Leave", "Inactive"];
 export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [staff, setStaff] = useState([]);
   const [stats, setStats] = useState({});
   const [search, setSearch] = useState("");
@@ -105,6 +106,24 @@ export default function StaffPage() {
     const nextStatus = member.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     await updateStaffStatusApi(member.authUserId, nextStatus);
     await fetchStaffData();
+  };
+
+  const handleStaffCreated = async (createdStaff) => {
+    await fetchStaffData();
+
+    const email = createdStaff?.email || "the staff member";
+    if (createdStaff?.emailDelivery?.sent) {
+      setSuccess(`Invite email sent to ${email}.`);
+      return;
+    }
+
+    setSuccess(
+      `Staff created for ${email}, but invite email was not sent automatically${
+        createdStaff?.emailDelivery?.reason
+          ? ` (${createdStaff.emailDelivery.reason})`
+          : ""
+      }.`,
+    );
   };
 
   if (loading) {
@@ -263,6 +282,16 @@ export default function StaffPage() {
         </Alert>
       ) : null}
 
+      {success ? (
+        <Alert
+          severity={success.includes("not sent") ? "warning" : "success"}
+          onClose={() => setSuccess("")}
+          sx={{ mt: 1.5, borderRadius: 1 }}
+        >
+          {success}
+        </Alert>
+      ) : null}
+
       <Box
         sx={{
           mt: 1.5,
@@ -305,7 +334,7 @@ export default function StaffPage() {
       <AddStaffModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
-        onSuccess={fetchStaffData}
+        onSuccess={handleStaffCreated}
       />
       <AssignProjectModal
         open={assignOpen}

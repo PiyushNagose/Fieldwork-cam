@@ -5,6 +5,7 @@ const aiController = require("../controllers/ai.controller");
 const router = express.Router();
 
 router.post("/verify/:photoId", authMiddleware, aiController.verifyPhoto);
+router.post("/verify-batch", authMiddleware, aiController.verifyBatch);
 router.post(
   "/verify-project/:projectId",
   authMiddleware,

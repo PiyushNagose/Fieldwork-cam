@@ -24,6 +24,7 @@ import {
   PersonOutlineOutlined,
   PhoneOutlined,
   PublicOutlined,
+  ImageOutlined,
 } from "@mui/icons-material";
 import { updateAdminProfileApi } from "../../api/admin.api";
 
@@ -56,6 +57,7 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
     department: "",
     bio: "",
     profilePhotoUrl: "",
+    bannerImageUrl: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -79,6 +81,7 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
       department: user?.department || meta?.department || "",
       bio: user?.bio || meta?.bio || "",
       profilePhotoUrl: user?.profilePhotoUrl || meta?.profilePhotoUrl || "",
+      bannerImageUrl: user?.bannerImageUrl || meta?.bannerImageUrl || "",
     });
   }, [profile, open]);
 
@@ -92,6 +95,21 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
 
   const handleChange = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
+  };
+
+  const handleImageChange = (key) => async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setForm((prev) => ({
+        ...prev,
+        [key]: String(reader.result || ""),
+      }));
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
   };
 
   const handleSave = async () => {
@@ -108,7 +126,18 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
         department: form.department,
         jobTitle: form.jobTitle,
         bio: form.bio,
-        profilePhotoUrl: form.profilePhotoUrl,
+        profilePhotoUrl: form.profilePhotoUrl.startsWith("data:")
+          ? undefined
+          : form.profilePhotoUrl,
+        profilePhotoDataUrl: form.profilePhotoUrl.startsWith("data:")
+          ? form.profilePhotoUrl
+          : undefined,
+        bannerImageUrl: form.bannerImageUrl.startsWith("data:")
+          ? undefined
+          : form.bannerImageUrl,
+        bannerImageDataUrl: form.bannerImageUrl.startsWith("data:")
+          ? form.bannerImageUrl
+          : undefined,
         meta: {
           firstName: form.firstName,
           lastName: form.lastName,
@@ -117,7 +146,12 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
           department: form.department,
           jobTitle: form.jobTitle,
           bio: form.bio,
-          profilePhotoUrl: form.profilePhotoUrl,
+          profilePhotoUrl: form.profilePhotoUrl.startsWith("data:")
+            ? undefined
+            : form.profilePhotoUrl,
+          bannerImageUrl: form.bannerImageUrl.startsWith("data:")
+            ? undefined
+            : form.bannerImageUrl,
         },
       };
 
@@ -200,17 +234,69 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
                 JPG or PNG. Max 5MB.
               </Typography>
               <Typography
+                component="label"
                 sx={{
                   mt: 0.8,
                   fontSize: 11.5,
                   fontWeight: 600,
                   color: "#D88B72",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  cursor: "pointer",
                 }}
               >
                 Upload new photo
+                <input hidden accept="image/png,image/jpeg,image/webp" type="file" onChange={handleImageChange("profilePhotoUrl")} />
               </Typography>
             </Box>
           </Stack>
+
+          <Box
+            sx={{
+              mt: 1.6,
+              border: "1px dashed #E6DDD7",
+              borderRadius: 1,
+              overflow: "hidden",
+              bgcolor: "#FCFAF8",
+            }}
+          >
+            <Box
+              sx={{
+                height: 88,
+                background: form.bannerImageUrl
+                  ? `center / cover no-repeat url(${form.bannerImageUrl})`
+                  : "linear-gradient(180deg, rgba(248,232,224,0.85) 0%, rgba(244,239,235,0.65) 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#B0B5BE",
+              }}
+            >
+              {!form.bannerImageUrl ? <ImageOutlined sx={{ fontSize: 28 }} /> : null}
+            </Box>
+            <Box sx={{ px: 1.5, py: 1.2 }}>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "#1F2937" }}>
+                Banner Image
+              </Typography>
+              <Typography sx={{ mt: 0.25, fontSize: 11.5, color: "#9CA3AF" }}>
+                JPG or PNG. Recommended wide image.
+              </Typography>
+              <Typography
+                component="label"
+                sx={{
+                  mt: 0.75,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: "#D88B72",
+                  display: "inline-flex",
+                  cursor: "pointer",
+                }}
+              >
+                Upload banner
+                <input hidden accept="image/png,image/jpeg,image/webp" type="file" onChange={handleImageChange("bannerImageUrl")} />
+              </Typography>
+            </Box>
+          </Box>
 
           <Tabs
             value={tab}

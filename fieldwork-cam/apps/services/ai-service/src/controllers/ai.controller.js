@@ -25,7 +25,17 @@ const verifyProject = asyncHandler(async (req, res) => {
   );
 });
 
+const verifyBatch = asyncHandler(async (req, res) => {
+  const data = await aiService.verifyPhotoBatchService(
+    req.body.photoIds,
+    req.headers.authorization,
+  );
+
+  return successResponse(res, data, "Selected photos verified successfully", 200);
+});
+
 module.exports = {
   verifyPhoto,
   verifyProject,
+  verifyBatch,
 };

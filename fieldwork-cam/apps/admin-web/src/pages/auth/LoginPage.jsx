@@ -29,8 +29,14 @@ import { loginEmailApi } from "../../api/auth.api";
 import { useAuth } from "../../auth/AuthContext";
 
 const featureItems = [
-  { icon: <LocationOnOutlined sx={{ fontSize: 16 }} />, label: "Geo-Tagged Photos" },
-  { icon: <CloudOutlined sx={{ fontSize: 16 }} />, label: "Secure Cloud Storage" },
+  {
+    icon: <LocationOnOutlined sx={{ fontSize: 16 }} />,
+    label: "Geo-Tagged Photos",
+  },
+  {
+    icon: <CloudOutlined sx={{ fontSize: 16 }} />,
+    label: "Secure Cloud Storage",
+  },
   { icon: <GroupsOutlined sx={{ fontSize: 16 }} />, label: "Team Management" },
 ];
 
@@ -72,7 +78,8 @@ export default function LoginPage() {
   }, []);
 
   const handleChange = (key) => (event) => {
-    const value = key === "rememberMe" ? event.target.checked : event.target.value;
+    const value =
+      key === "rememberMe" ? event.target.checked : event.target.value;
 
     setForm((prev) => ({
       ...prev,
@@ -152,22 +159,31 @@ export default function LoginPage() {
           }}
         />
 
-        <Box sx={{ position: "relative", width: "100%", maxWidth: 560, color: "#fff" }}>
+        <Box
+          sx={{
+            position: "relative",
+            width: "100%",
+            maxWidth: 560,
+            color: "#fff",
+            mb: 6,
+          }}
+        >
           <Box
             component="img"
             src="/logo.png"
             alt="LaFloridians"
             sx={{
-              width: 215,
+              width: 350,
               objectFit: "contain",
-              mb: 4.5,
+              mb: 0.5,
+              ml: 6,
             }}
           />
 
           <Typography
             sx={{
               fontSize: { lg: 46, xl: 52 },
-              lineHeight: 1.06,
+              lineHeight: 1.05,
               fontWeight: 800,
               letterSpacing: "-0.04em",
               color: "#FFFFFF",
@@ -185,7 +201,7 @@ export default function LoginPage() {
               mt: 2.5,
               maxWidth: 470,
               fontSize: 14.5,
-              lineHeight: 1.7,
+              lineHeight: 1.5,
               color: "rgba(255,255,255,0.84)",
             }}
           >
@@ -194,9 +210,18 @@ export default function LoginPage() {
             real-time reporting.
           </Typography>
 
-          <Stack direction="row" flexWrap="wrap" gap={1.05} sx={{ mt: 3.2, maxWidth: 430 }}>
+          <Stack
+            direction="row"
+            flexWrap="wrap"
+            gap={1.05}
+            sx={{ mt: 3.2, maxWidth: 430 }}
+          >
             {featureItems.map((item) => (
-              <FeatureChip key={item.label} icon={item.icon} label={item.label} />
+              <FeatureChip
+                key={item.label}
+                icon={item.icon}
+                label={item.label}
+              />
             ))}
           </Stack>
 
@@ -236,8 +261,8 @@ export default function LoginPage() {
             <Stack direction="row" spacing={1.25} alignItems="center">
               <Box
                 sx={{
-                  width: 34,
-                  height: 34,
+                  width: 40,
+                  height: 40,
                   borderRadius: "50%",
                   bgcolor: "#EEF2FF",
                   display: "grid",
@@ -253,7 +278,7 @@ export default function LoginPage() {
                     fontSize: { xs: 20, sm: 22 },
                     fontWeight: 700,
                     color: "#1F2937",
-                    lineHeight: 1,
+                    lineHeight: 3,
                   }}
                 >
                   Sign In
@@ -281,7 +306,9 @@ export default function LoginPage() {
                 border: "1px solid #EFE4DB",
               }}
             >
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>
+              <Typography
+                sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}
+              >
                 FieldWork Cam
               </Typography>
               <Typography
@@ -310,7 +337,9 @@ export default function LoginPage() {
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <EmailOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
+                        <EmailOutlined
+                          sx={{ fontSize: 17, color: "#B0AAA4" }}
+                        />
                       </InputAdornment>
                     ),
                   }}
@@ -460,7 +489,8 @@ export default function LoginPage() {
                         color: "#6D6EE6",
                       }}
                     >
-                      This portal is restricted to authorized users. All login activity is monitored and logged.
+                      This portal is restricted to authorized users. All login
+                      activity is monitored and logged.
                     </Typography>
                   </Box>
                 </Box>

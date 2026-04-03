@@ -16,8 +16,17 @@ const getProjectById = asyncHandler(async (req, res) => {
 });
 
 const createProject = asyncHandler(async (req, res) => {
-  const project = await projectService.createVendorProject(req.body);
+  const project = await projectService.createVendorProject(req.user, req.body);
   return successResponse(res, project, "Project created successfully", 201);
+});
+
+const updateProject = asyncHandler(async (req, res) => {
+  const project = await projectService.updateProject(
+    req.params.projectId,
+    req.body,
+    req.user,
+  );
+  return successResponse(res, project, "Project updated successfully", 200);
 });
 
 const getProjectNotes = asyncHandler(async (req, res) => {
@@ -41,6 +50,7 @@ const assignVendor = asyncHandler(async (req, res) => {
   const project = await projectService.assignVendor(
     req.params.projectId,
     req.body.vendorAuthUserId,
+    req.user,
   );
   return successResponse(res, project, "Vendor assigned successfully", 200);
 });
@@ -49,6 +59,7 @@ const assignStaff = asyncHandler(async (req, res) => {
   const project = await projectService.assignStaff(
     req.params.projectId,
     req.body.staffId,
+    req.user,
   );
   return successResponse(res, project, "Staff assigned successfully", 200);
 });
@@ -57,17 +68,25 @@ const updateProjectStatus = asyncHandler(async (req, res) => {
   const project = await projectService.updateProjectStatus(
     req.params.projectId,
     req.body.status,
+    req.user,
   );
   return successResponse(res, project, "Project status updated successfully", 200);
+});
+
+const deleteProject = asyncHandler(async (req, res) => {
+  const result = await projectService.removeProject(req.params.projectId, req.user);
+  return successResponse(res, result, "Project deleted successfully", 200);
 });
 
 module.exports = {
   getProjects,
   getProjectById,
   createProject,
+  updateProject,
   getProjectNotes,
   addProjectNote,
   assignVendor,
   assignStaff,
   updateProjectStatus,
+  deleteProject,
 };

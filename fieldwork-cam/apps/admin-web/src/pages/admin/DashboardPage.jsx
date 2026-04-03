@@ -200,6 +200,43 @@ export default function AdminDashboardPage() {
         timeAgo: formatRelativeTime(item.createdAt || item.updatedAt),
       }));
 
+    const fallbackActivity = [
+      ...projects.slice(0, 20).map((item) => ({
+        id: `project-${item._id || item.id}`,
+        type: "PROJECT",
+        title: projectActivityTitle(item),
+        subtitle: `${item.workOrderNumber || "Project"} • ${item.title || "Untitled project"}`,
+        timeAgo: formatRelativeTime(item.updatedAt || item.createdAt),
+        sortTime: new Date(item.updatedAt || item.createdAt).getTime(),
+      })),
+      ...invoices.slice(0, 20).map((item) => ({
+        id: `invoice-${item._id || item.id}`,
+        type: "INVOICE",
+        title: invoiceActivityTitle(item),
+        subtitle: `${item.invoiceNumber || "Invoice"} • ${item.projectName || item.projectCode || "Linked project"}`,
+        timeAgo: formatRelativeTime(item.paymentDate || item.updatedAt || item.createdAt),
+        sortTime: new Date(item.paymentDate || item.updatedAt || item.createdAt).getTime(),
+      })),
+      ...vendors.slice(0, 20).map((item) => ({
+        id: `vendor-${item._id || item.id}`,
+        type: "STAFF",
+        title: "Vendor profile available",
+        subtitle: `${item.companyName || item.fullName || "Vendor"} is active in the system`,
+        timeAgo: formatRelativeTime(item.joinedAt || item.createdAt),
+        sortTime: new Date(item.joinedAt || item.createdAt).getTime(),
+      })),
+    ]
+      .filter((item) => !Number.isNaN(item.sortTime))
+      .sort((a, b) => b.sortTime - a.sortTime)
+      .slice(0, 6)
+      .map((item) => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        subtitle: item.subtitle,
+        timeAgo: item.timeAgo,
+      }));
+
     const recentSubmissions = [...projects]
       .filter((item) =>
         ["New", "Submitted", "Approved", "In Progress", "Retake Requested"].includes(
@@ -253,7 +290,7 @@ export default function AdminDashboardPage() {
       ],
       earningsSeries,
       vendorPerformance,
-      recentActivity,
+      recentActivity: recentActivity.length ? recentActivity : fallbackActivity,
       recentSubmissions,
     };
   }, [projects, vendors, invoices, notifications]);
@@ -989,6 +1026,22 @@ function mapSubmissionStatus(status = "") {
   if (status === "Submitted") return "In Review";
   if (status === "Retake Requested") return "In Review";
   return status || "New";
+}
+
+function projectActivityTitle(project) {
+  if (project.status === "Submitted") return "New site photos uploaded";
+  if (project.status === "Approved") return "Inspection approved";
+  if (project.status === "Retake Requested") return "Comment from reviewer";
+  if (project.status === "In Progress") return "Deadline approaching";
+  if (project.status === "New") return "New vendor onboarded";
+  return "Project updated";
+}
+
+function invoiceActivityTitle(invoice) {
+  const status = normalizeInvoiceStatus(invoice.status);
+  if (status === "PAID") return "Payment received";
+  if (status === "APPROVED") return "Invoice approved";
+  return "Invoice pending review";
 }
 
 const tableHeadSx = {

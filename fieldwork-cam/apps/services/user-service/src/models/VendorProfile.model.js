@@ -43,6 +43,11 @@ const vendorProfileSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    bannerImageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     serviceArea: {
       type: String,
       default: "",

@@ -71,6 +71,11 @@ const userSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    bannerImageUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
     meta: {
       firstName: {
@@ -109,6 +114,11 @@ const userSchema = new mongoose.Schema(
         trim: true,
       },
       profilePhotoUrl: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+      bannerImageUrl: {
         type: String,
         default: "",
         trim: true,

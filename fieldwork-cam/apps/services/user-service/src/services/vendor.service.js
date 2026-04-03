@@ -13,6 +13,7 @@ const {
 } = require("../repositories/vendor.repository");
 
 const ApiError = require("../utils/apiError");
+const { saveDataUrlImage } = require("../utils/profileMediaStorage");
 
 const buildDisplayNameParts = (fullName = "", meta = {}) => {
   const nameParts = String(fullName).trim().split(" ").filter(Boolean);
@@ -45,10 +46,12 @@ const formatVendorProfileResponse = (vendor, user) => {
       createdAt: user?.createdAt || vendor.createdAt,
       lastLogin: user?.lastLogin || meta.lastLogin || "",
       profilePhotoUrl: user?.profilePhotoUrl || meta.profilePhotoUrl || "",
+      bannerImageUrl:
+        user?.bannerImageUrl || meta.bannerImageUrl || vendor.bannerImageUrl || "",
       location: user?.location || vendor.serviceArea || vendor.address || "",
       timezone: user?.timezone || meta.timezone || "",
-      department: user?.department || meta.department || "Vendor Operations",
-      jobTitle: user?.jobTitle || meta.jobTitle || "Vendor Partner",
+      department: user?.department || meta.department || "",
+      jobTitle: user?.jobTitle || meta.jobTitle || "",
       bio: user?.bio || meta.bio || "",
     },
     meta: {
@@ -58,8 +61,8 @@ const formatVendorProfileResponse = (vendor, user) => {
       website: vendor.website || "",
       location: user?.location || vendor.serviceArea || vendor.address || "",
       timezone: user?.timezone || meta.timezone || "",
-      department: user?.department || meta.department || "Vendor Operations",
-      jobTitle: user?.jobTitle || meta.jobTitle || "Vendor Partner",
+      department: user?.department || meta.department || "",
+      jobTitle: user?.jobTitle || meta.jobTitle || "",
       bio: user?.bio || meta.bio || "",
       approvalRate,
       totalProjects,
@@ -67,6 +70,8 @@ const formatVendorProfileResponse = (vendor, user) => {
       totalActiveProjects,
       teamSize,
       profilePhotoUrl: user?.profilePhotoUrl || meta.profilePhotoUrl || "",
+      bannerImageUrl:
+        user?.bannerImageUrl || meta.bannerImageUrl || vendor.bannerImageUrl || "",
       memberSince: meta.memberSince || vendor.createdAt,
       lastLogin: user?.lastLogin || meta.lastLogin || "",
       address: vendor.address || "",
@@ -211,6 +216,10 @@ const getVendorById = async (id) => {
     fullName: user?.fullName || "",
     email: user?.email || vendor.businessEmail || "",
     phone: user?.phone || vendor.businessPhone || "",
+    profilePhotoUrl: user?.profilePhotoUrl || user?.meta?.profilePhotoUrl || "",
+    bannerImageUrl:
+      user?.bannerImageUrl || user?.meta?.bannerImageUrl || vendor.bannerImageUrl || "",
+    jobTitle: user?.jobTitle || user?.meta?.jobTitle || "",
     serviceArea: vendor.serviceArea || vendor.address || "",
     address: vendor.address || "",
     status: vendor.status || user?.status || "ACTIVE",
@@ -218,6 +227,8 @@ const getVendorById = async (id) => {
     serviceTypes: vendor.serviceTypes || [],
     bio: user?.bio || "",
     website: vendor.website || "",
+    bannerImageUrl:
+      user?.bannerImageUrl || user?.meta?.bannerImageUrl || vendor.bannerImageUrl || "",
     teamSize: 0,
     totalProjects: 0,
     completedProjects: 0,
@@ -253,9 +264,29 @@ const updateVendorProfile = async (authUserId, payload) => {
     throw new ApiError("User not found", 404);
   }
 
+  const profilePhotoUrl =
+    payload.profilePhotoDataUrl && payload.publicBaseUrl
+      ? saveDataUrlImage({
+          dataUrl: payload.profilePhotoDataUrl,
+          prefix: `vendor-profile-${authUserId}`,
+          publicBaseUrl: payload.publicBaseUrl,
+        })
+      : payload.profilePhotoUrl ?? user.profilePhotoUrl;
+
+  const bannerImageUrl =
+    payload.bannerImageDataUrl && payload.publicBaseUrl
+      ? saveDataUrlImage({
+          dataUrl: payload.bannerImageDataUrl,
+          prefix: `vendor-banner-${authUserId}`,
+          publicBaseUrl: payload.publicBaseUrl,
+        })
+      : payload.bannerImageUrl ?? user.bannerImageUrl ?? vendor.bannerImageUrl;
+
   const nextMeta = {
     ...(user.meta || {}),
     ...(payload.meta || {}),
+    profilePhotoUrl,
+    bannerImageUrl,
   };
 
   const updatedUser = await updateUser(authUserId, {
@@ -267,7 +298,8 @@ const updateVendorProfile = async (authUserId, payload) => {
     department: payload.department ?? user.department,
     jobTitle: payload.jobTitle ?? user.jobTitle,
     bio: payload.bio ?? user.bio,
-    profilePhotoUrl: payload.profilePhotoUrl ?? user.profilePhotoUrl,
+    profilePhotoUrl,
+    bannerImageUrl,
     meta: nextMeta,
   });
   const updatedVendor = await updateVendorProfileByAuthUserId(authUserId, {
@@ -279,6 +311,7 @@ const updateVendorProfile = async (authUserId, payload) => {
     taxId: payload.taxId ?? vendor.taxId,
     identityDocumentUrl:
       payload.identityDocumentUrl ?? vendor.identityDocumentUrl,
+    bannerImageUrl,
     serviceArea: payload.serviceArea ?? vendor.serviceArea,
     serviceTypes: payload.serviceTypes ?? vendor.serviceTypes,
   });

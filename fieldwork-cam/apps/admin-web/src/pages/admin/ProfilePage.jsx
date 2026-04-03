@@ -123,6 +123,7 @@ export default function ProfilePage() {
   const role = user?.role || "";
   const jobTitle = user?.jobTitle || meta?.jobTitle || "";
   const avatarUrl = user?.profilePhotoUrl || meta?.profilePhotoUrl || "";
+  const bannerImageUrl = user?.bannerImageUrl || meta?.bannerImageUrl || "";
 
   const stats = useMemo(() => {
     const totalProjects = projects.length;
@@ -139,17 +140,12 @@ export default function ProfilePage() {
     ).length;
 
     return {
-      totalProjects: meta?.totalProjects ?? totalProjects,
-      totalVendors: meta?.totalVendors ?? totalVendors,
-      totalCompleted: meta?.totalCompleted ?? totalCompleted,
-      approvalRate:
-        typeof meta?.approvalRate === "number"
-          ? meta.approvalRate
-          : submitted
-            ? Math.round((approved / submitted) * 100)
-            : 0,
+      totalProjects,
+      totalVendors,
+      totalCompleted,
+      approvalRate: submitted ? Math.round((approved / submitted) * 100) : 0,
     };
-  }, [meta, projects, vendors]);
+  }, [projects, vendors]);
 
   const recentActivity = useMemo(() => {
     const projectItems = projects
@@ -291,8 +287,9 @@ export default function ProfilePage() {
           <Box
             sx={{
               height: 98,
-              background:
-                "linear-gradient(180deg, rgba(248,232,224,0.85) 0%, rgba(244,239,235,0.65) 100%)",
+              background: bannerImageUrl
+                ? `center / cover no-repeat url(${bannerImageUrl})`
+                : "linear-gradient(180deg, rgba(248,232,224,0.85) 0%, rgba(244,239,235,0.65) 100%)",
             }}
           />
 

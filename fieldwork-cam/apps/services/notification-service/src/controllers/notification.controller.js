@@ -2,6 +2,16 @@ const { asyncHandler } = require("../utils/asyncHandler");
 const { successResponse } = require("../utils/apiResponse");
 const service = require("../services/notification.service");
 
+const createInternal = asyncHandler(async (req, res) => {
+  const items = Array.isArray(req.body?.notifications)
+    ? req.body.notifications
+    : req.body
+      ? [req.body]
+      : [];
+  const data = await service.createInternalNotifications(items);
+  return successResponse(res, data, "Notifications created", 201);
+});
+
 const getNotifications = asyncHandler(async (req, res) => {
   const data = await service.getUserNotifications(req.user.userId);
   return successResponse(res, data);
@@ -28,6 +38,7 @@ const clearAll = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  createInternal,
   getNotifications,
   markRead,
   markAllRead,

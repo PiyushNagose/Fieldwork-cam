@@ -1,4 +1,5 @@
 const StaffProfile = require("../models/StaffProfile.model");
+const mongoose = require("mongoose");
 
 // 🔷 CREATE
 const createStaffProfile = (payload) => StaffProfile.create(payload);
@@ -6,6 +7,11 @@ const createStaffProfile = (payload) => StaffProfile.create(payload);
 // 🔷 FIND BY AUTH USER ID
 const findStaffByAuthUserId = (authUserId) =>
   StaffProfile.findOne({ authUserId, isDeleted: { $ne: true } });
+
+const findStaffById = (id) =>
+  mongoose.Types.ObjectId.isValid(id)
+    ? StaffProfile.findOne({ _id: id, isDeleted: { $ne: true } })
+    : null;
 
 // 🔷 FIND BY VENDOR (BASE)
 const findStaffByVendor = (vendorAuthUserId) =>
@@ -48,10 +54,17 @@ const updateStaffProfile = (authUserId, payload) =>
     { new: true },
   );
 
+const updateStaffProfileById = (id, payload) =>
+  StaffProfile.findOneAndUpdate(
+    { _id: id, isDeleted: { $ne: true } },
+    payload,
+    { new: true },
+  );
+
 // 🔷 SOFT DELETE (FUTURE SAFE)
 const softDeleteStaff = (authUserId) =>
   StaffProfile.findOneAndUpdate(
-    { authUserId },
+    { authUserId, isDeleted: { $ne: true } },
     { isDeleted: true },
     { new: true },
   );
@@ -59,10 +72,12 @@ const softDeleteStaff = (authUserId) =>
 
 module.exports = {
   createStaffProfile,
+  findStaffById,
   findStaffByAuthUserId,
   findStaffByVendor,
   findStaffByVendorWithFilters, // NEW
   updateStaffProfile,
+  updateStaffProfileById,
   softDeleteStaff, // NEW
 
 };

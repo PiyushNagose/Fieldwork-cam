@@ -4,11 +4,11 @@ const notificationSchema = new mongoose.Schema(
   {
     userId: {
       type: String,
-      required: true,
+      default: "",
     },
     type: {
       type: String,
-      enum: ["PROJECT", "PAYMENT", "SYSTEM"],
+      enum: ["PROJECT", "PAYMENT", "SYSTEM", "SUPPORT", "STAFF", "INVOICE"],
       default: "PROJECT",
     },
     title: {

@@ -34,15 +34,23 @@ export default function AcceptInvitePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [completedRole, setCompletedRole] = useState("");
 
-  const checklist = useMemo(
-    () => [
+  const checklist = useMemo(() => {
+    if (completedRole === "STAFF") {
+      return [
+        "Your staff account is now active",
+        "You can close this page after reviewing the instructions",
+        "Open the mobile app and sign in with your new password",
+      ];
+    }
+
+    return [
       "Your vendor account will be activated immediately",
       "You will be redirected straight to your vendor dashboard",
       "After logout, you can sign in from the same shared login page",
-    ],
-    [],
-  );
+    ];
+  }, [completedRole]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -77,10 +85,16 @@ export default function AcceptInvitePage() {
       });
 
       const data = res?.data || res;
-      login(data);
+      const role = data?.user?.role || "";
 
-      if (data?.user?.role === "VENDOR_OWNER") {
+      if (role === "VENDOR_OWNER") {
+        login(data);
         navigate("/vendor/dashboard", { replace: true });
+        return;
+      }
+
+      if (role === "STAFF") {
+        setCompletedRole("STAFF");
         return;
       }
 
@@ -132,7 +146,8 @@ export default function AcceptInvitePage() {
             component="img"
             src="/logo.png"
             alt="LaFloridians"
-            sx={{ width: 230, objectFit: "contain", mb: 5.5 }}
+            sx={{ width: 350, objectFit: "contain", mb: 1, ml:4 }}
+  
           />
 
           <Typography
@@ -144,11 +159,23 @@ export default function AcceptInvitePage() {
               color: "#FFFFFF",
             }}
           >
-            Finish setting up
-            <br />
-            <Box component="span" sx={{ color: "#9EA2FF" }}>
-              your vendor account.
-            </Box>
+            {completedRole === "STAFF" ? (
+              <>
+                Staff access is
+                <br />
+                <Box component="span" sx={{ color: "#9EA2FF" }}>
+                  ready to go.
+                </Box>
+              </>
+            ) : (
+              <>
+                Finish setting up
+                <br />
+                <Box component="span" sx={{ color: "#9EA2FF" }}>
+                  your account.
+                </Box>
+              </>
+            )}
           </Typography>
 
           <Typography
@@ -160,8 +187,9 @@ export default function AcceptInvitePage() {
               color: "rgba(255,255,255,0.82)",
             }}
           >
-            Create a secure password to activate your invite and access your
-            vendor dashboard in FieldWork Cam.
+            {completedRole === "STAFF"
+              ? "Your password has been created successfully. Continue on mobile using your staff credentials."
+              : "Create a secure password to activate your invite and continue into FieldWork Cam."}
           </Typography>
 
           <Stack spacing={1.2} sx={{ mt: 3.8, maxWidth: 430 }}>
@@ -198,186 +226,271 @@ export default function AcceptInvitePage() {
           }}
         >
           <CardContent sx={{ p: { xs: 2.8, sm: 4 } }}>
-            <Stack direction="row" spacing={1.25} alignItems="center">
-              <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  bgcolor: "#F2EAE4",
-                  display: "grid",
-                  placeItems: "center",
-                }}
-              >
-                <LockOutlined sx={{ color: "#8D7B72", fontSize: 18 }} />
-              </Box>
+            {completedRole === "STAFF" ? (
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      bgcolor: "#ECFDF5",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <CheckCircleOutlineOutlined
+                      sx={{ color: "#10B981", fontSize: 18 }}
+                    />
+                  </Box>
 
-              <Box>
-                <Typography
-                  sx={{
-                    fontSize: { xs: 20, sm: 22 },
-                    fontWeight: 700,
-                    color: "#1F2937",
-                    lineHeight: 1,
-                  }}
-                >
-                  Set Your Password
-                </Typography>
-                <Typography
-                  sx={{
-                    mt: 0.55,
-                    color: "#8F8A84",
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                  }}
-                >
-                  Create your password to activate your vendor account.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Box
-              sx={{
-                display: { xs: "block", lg: "none" },
-                mt: 2.2,
-                p: 1.45,
-                borderRadius: 1,
-                bgcolor: "#FBF6F2",
-                border: "1px solid #EFE4DB",
-              }}
-            >
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>
-                FieldWork Cam
-              </Typography>
-              <Typography
-                sx={{
-                  mt: 0.4,
-                  fontSize: 11.5,
-                  lineHeight: 1.7,
-                  color: "#8F8A84",
-                }}
-              >
-                Set a secure password once, then continue directly into your vendor dashboard.
-              </Typography>
-            </Box>
-
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2.6 }}>
-              <Stack spacing={1.9}>
-                {error ? (
-                  <Alert severity="error" sx={{ borderRadius: 1 }}>
-                    {error}
-                  </Alert>
-                ) : null}
-
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Password"
-                  placeholder="Create your password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type={showPassword ? "text" : "password"}
-                  sx={fieldSx}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LockOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          edge="end"
-                          size="small"
-                          sx={{ color: "#A39D96" }}
-                        >
-                          {showPassword ? (
-                            <VisibilityOff sx={{ fontSize: 17 }} />
-                          ) : (
-                            <Visibility sx={{ fontSize: 17 }} />
-                          )}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Confirm Password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  type={showConfirmPassword ? "text" : "password"}
-                  sx={fieldSx}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <ShieldOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={() => setShowConfirmPassword((prev) => !prev)}
-                          edge="end"
-                          size="small"
-                          sx={{ color: "#A39D96" }}
-                        >
-                          {showConfirmPassword ? (
-                            <VisibilityOff sx={{ fontSize: 17 }} />
-                          ) : (
-                            <Visibility sx={{ fontSize: 17 }} />
-                          )}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontSize: { xs: 20, sm: 22 },
+                        fontWeight: 700,
+                        color: "#1F2937",
+                        lineHeight: 1,
+                      }}
+                    >
+                      Password Set Successfully
+                    </Typography>
+                    <Typography
+                      sx={{
+                        mt: 0.55,
+                        color: "#8F8A84",
+                        fontSize: 12.5,
+                        fontWeight: 500,
+                      }}
+                    >
+                      Your staff account is ready for mobile sign-in.
+                    </Typography>
+                  </Box>
+                </Stack>
 
                 <Box
                   sx={{
-                    p: 1.5,
+                    p: 1.6,
                     borderRadius: 1,
                     bgcolor: "#FBF8F5",
                     border: "1px solid #EEE4DC",
                   }}
                 >
                   <Typography
-                    sx={{ fontSize: 11.5, color: "#8F8A84", lineHeight: 1.7 }}
+                    sx={{ fontSize: 12.5, color: "#6B7280", lineHeight: 1.7 }}
                   >
-                    Use at least 6 characters. Once your password is saved, your
-                    invite will be activated and you&apos;ll be redirected to the vendor dashboard.
+                    Staff does not have a web dashboard. Close this page, open the
+                    mobile app, and sign in with the email or phone number you were
+                    invited with plus the password you just created.
                   </Typography>
                 </Box>
 
                 <Button
                   fullWidth
-                  type="submit"
-                  variant="contained"
-                  disabled={loading}
+                  variant="outlined"
+                  onClick={() => navigate("/login", { replace: true })}
                   sx={{
-                    mt: 0.35,
-                    py: 1.15,
-                    minHeight: 46,
-                    fontSize: 13,
-                    fontWeight: 700,
+                    minHeight: 44,
                     borderRadius: 1,
-                    bgcolor: "#8D7B72",
-                    boxShadow: "0 12px 26px rgba(141, 123, 114, 0.20)",
+                    borderColor: "#E8E0DA",
+                    color: "#6B7280",
                     textTransform: "none",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    boxShadow: "none",
                     "&:hover": {
-                      bgcolor: "#7D6B63",
-                      boxShadow: "0 12px 26px rgba(125, 107, 99, 0.24)",
+                      borderColor: "#DED4CD",
+                      bgcolor: "#FCFAF8",
+                      boxShadow: "none",
                     },
                   }}
                 >
-                  {loading ? "Activating Account..." : "Set Password & Continue"}
+                  Back to Login
                 </Button>
               </Stack>
-            </Box>
+            ) : (
+              <>
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      bgcolor: "#F2EAE4",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <LockOutlined sx={{ color: "#8D7B72", fontSize: 18 }} />
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontSize: { xs: 20, sm: 22 },
+                        fontWeight: 700,
+                        color: "#1F2937",
+                        lineHeight: 5,
+                      }}
+                    >
+                      Set Your Password
+                    </Typography>
+                    <Typography
+                      sx={{
+                        mt: 0.55,
+                        color: "#8F8A84",
+                        fontSize: 12.5,
+                        fontWeight: 500,
+                      }}
+                    >
+                      Create your password to activate your account.
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Box
+                  sx={{
+                    display: { xs: "block", lg: "none" },
+                    mt: 2.2,
+                    p: 1.45,
+                    borderRadius: 1,
+                    bgcolor: "#FBF6F2",
+                    border: "1px solid #EFE4DB",
+                  }}
+                >
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#1F2937" }}>
+                    FieldWork Cam
+                  </Typography>
+                  <Typography
+                    sx={{
+                      mt: 0.4,
+                      fontSize: 11.5,
+                      lineHeight: 1.5,
+                      color: "#8F8A84",
+                    }}
+                  >
+                    Set a secure password once, then continue with the correct next step for your role.
+                  </Typography>
+                </Box>
+
+                <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2.6 }}>
+                  <Stack spacing={1.9}>
+                    {error ? (
+                      <Alert severity="error" sx={{ borderRadius: 1 }}>
+                        {error}
+                      </Alert>
+                    ) : null}
+
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Password"
+                      placeholder="Create your password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      type={showPassword ? "text" : "password"}
+                      sx={fieldSx}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPassword((prev) => !prev)}
+                              edge="end"
+                              size="small"
+                              sx={{ color: "#A39D96" }}
+                            >
+                              {showPassword ? (
+                                <VisibilityOff sx={{ fontSize: 17 }} />
+                              ) : (
+                                <Visibility sx={{ fontSize: 17 }} />
+                              )}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="Confirm Password"
+                      placeholder="Confirm your password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      type={showConfirmPassword ? "text" : "password"}
+                      sx={fieldSx}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <ShieldOutlined sx={{ fontSize: 17, color: "#B0AAA4" }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowConfirmPassword((prev) => !prev)}
+                              edge="end"
+                              size="small"
+                              sx={{ color: "#A39D96" }}
+                            >
+                              {showConfirmPassword ? (
+                                <VisibilityOff sx={{ fontSize: 17 }} />
+                              ) : (
+                                <Visibility sx={{ fontSize: 17 }} />
+                              )}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 1,
+                        bgcolor: "#FBF8F5",
+                        border: "1px solid #EEE4DC",
+                      }}
+                    >
+                      <Typography
+                        sx={{ fontSize: 11.5, color: "#8F8A84", lineHeight: 1.7 }}
+                      >
+                        Use at least 6 characters. Vendors will continue directly into their dashboard. Staff will finish here and then use the mobile app to sign in.
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      fullWidth
+                      type="submit"
+                      variant="contained"
+                      disabled={loading}
+                      sx={{
+                        mt: 0.35,
+                        py: 1.15,
+                        minHeight: 46,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        borderRadius: 1,
+                        bgcolor: "#8D7B72",
+                        boxShadow: "0 12px 26px rgba(141, 123, 114, 0.20)",
+                        textTransform: "none",
+                        "&:hover": {
+                          bgcolor: "#7D6B63",
+                          boxShadow: "0 12px 26px rgba(125, 107, 99, 0.24)",
+                        },
+                      }}
+                    >
+                      {loading ? "Activating Account..." : "Set Password & Continue"}
+                    </Button>
+                  </Stack>
+                </Box>
+              </>
+            )}
           </CardContent>
         </Card>
       </Box>

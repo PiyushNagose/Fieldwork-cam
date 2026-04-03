@@ -1,6 +1,7 @@
 const Notification = require("../models/Notification.model");
 
 const createNotification = (payload) => Notification.create(payload);
+const createNotifications = (payloads = []) => Notification.insertMany(payloads);
 
 const getNotifications = (userId) =>
   Notification.find({ userId }).sort({ createdAt: -1 });
@@ -18,6 +19,7 @@ const clearAllNotifications = (userId) => Notification.deleteMany({ userId });
 
 module.exports = {
   createNotification,
+  createNotifications,
   getNotifications,
   markAsRead,
   markAllAsRead,

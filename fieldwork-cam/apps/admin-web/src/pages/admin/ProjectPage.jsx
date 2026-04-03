@@ -30,7 +30,10 @@ import {
   SearchOutlined,
   VisibilityOutlined,
 } from "@mui/icons-material";
-import { getProjectsApi } from "../../api/project.api";
+import {
+  deleteProjectApi,
+  getProjectsApi,
+} from "../../api/project.api";
 import { getSubmissionByProjectApi } from "../../api/submission.api";
 
 const STATUS_TABS = [
@@ -121,12 +124,7 @@ export default function ProjectPage() {
       setLoading(true);
       setError("");
 
-      const params = {};
-      if (activeTab !== "ALL") {
-        params.status = activeTab;
-      }
-
-      const response = await getProjectsApi(params);
+      const response = await getProjectsApi();
       const data = response?.data || response || [];
       const nextProjects = Array.isArray(data) ? data : [];
 
@@ -143,7 +141,7 @@ export default function ProjectPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     fetchProjects();
@@ -152,10 +150,14 @@ export default function ProjectPage() {
   const filteredProjects = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) return projects;
+    return projects.filter((project) => {
+      const matchesTab =
+        activeTab === "ALL" ? true : project.status === activeTab;
 
-    return projects.filter((project) =>
-      [
+      if (!matchesTab) return false;
+      if (!query) return true;
+
+      return [
         project.projectCode,
         project.workOrderNumber,
         project.title,
@@ -168,9 +170,9 @@ export default function ProjectPage() {
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(query),
-    );
-  }, [projects, search]);
+        .includes(query);
+    });
+  }, [activeTab, projects, search]);
 
   const approvalRequestCount = useMemo(
     () =>
@@ -190,6 +192,41 @@ export default function ProjectPage() {
 
     if (submissionId) {
       navigate(`/admin/submissions/${submissionId}`);
+    }
+  };
+
+  const handleViewProject = (project) => {
+    const projectId = project._id || project.id;
+    if (!projectId) return;
+    navigate(`/admin/projects/${projectId}`);
+  };
+
+  const handleEditProject = (project) => {
+    const projectId = project._id || project.id;
+    if (!projectId) return;
+    navigate(`/admin/projects/${projectId}/edit`);
+  };
+
+  const handleDeleteProject = async (project) => {
+    const projectId = project._id || project.id;
+    if (!projectId) return;
+
+    const confirmed = window.confirm(
+      `Delete ${project.title || "this project"}? This action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setError("");
+      await deleteProjectApi(projectId);
+      await fetchProjects();
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to delete project",
+      );
     }
   };
 
@@ -527,7 +564,6 @@ export default function ProjectPage() {
                 <TableBody>
                   {filteredProjects.map((project) => {
                     const projectId = project._id || project.id;
-                    const hasSubmission = Boolean(submissionMap[projectId]);
                     const tone = getRowStatusTone(project.status);
 
                     return (
@@ -604,16 +640,23 @@ export default function ProjectPage() {
                           >
                             <IconButton
                               size="small"
-                              disabled={!hasSubmission}
-                              onClick={() => handleOpenSubmission(project)}
+                              onClick={() => handleViewProject(project)}
                               sx={actionIconButtonSx}
                             >
                               <VisibilityOutlined sx={{ fontSize: 14 }} />
                             </IconButton>
-                            <IconButton size="small" disabled sx={actionIconButtonSx}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditProject(project)}
+                              sx={actionIconButtonSx}
+                            >
                               <EditOutlined sx={{ fontSize: 14 }} />
                             </IconButton>
-                            <IconButton size="small" disabled sx={actionIconButtonSx}>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteProject(project)}
+                              sx={actionIconButtonSx}
+                            >
                               <DeleteOutlineOutlined sx={{ fontSize: 14 }} />
                             </IconButton>
                           </Stack>

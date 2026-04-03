@@ -8,6 +8,15 @@ const {
   updateSubmissionById,
   pushTimelineEvent,
 } = require("../repositories/submission.repository");
+const { createNotifications } = require("./notification.service");
+
+const sendNotifications = async (items = []) => {
+  try {
+    await createNotifications(items);
+  } catch (error) {
+    console.error("Submission notification error:", error.message);
+  }
+};
 
 const getProject = async (projectId, authHeader) => {
   const res = await axios.get(
@@ -47,9 +56,11 @@ const updateProjectStatus = async (projectId, status, authHeader) => {
   );
 };
 
+const SUBMITTABLE_PROJECT_STATUSES = ["New", "In Progress", "Retake Requested"];
+
 const createSubmissionService = async (authUserId, payload, authHeader) => {
   const existing = await findSubmissionByProjectId(payload.projectId);
-  if (existing) {
+  if (existing && existing.status !== "Retake Requested") {
     throw new ApiError("Submission already exists for this project", 409);
   }
 
@@ -64,6 +75,13 @@ const createSubmissionService = async (authUserId, payload, authHeader) => {
     project.assignedVendorAuthUserId !== authUserId
   ) {
     throw new ApiError("Unauthorized project submission", 403);
+  }
+
+  if (!SUBMITTABLE_PROJECT_STATUSES.includes(project.status)) {
+    throw new ApiError(
+      `Project cannot be submitted while in ${project.status} state`,
+      400,
+    );
   }
 
   const photos = await getProjectPhotos(payload.projectId, authHeader);
@@ -83,23 +101,52 @@ const createSubmissionService = async (authUserId, payload, authHeader) => {
       )
     : 0;
 
-  const submission = await createSubmission({
-    projectId: payload.projectId,
-    vendorAuthUserId: authUserId,
-    photoIds: payload.photoIds,
-    aiAverageScore,
-    status: "Submitted",
-    timeline: [
-      {
-        type: "SUBMITTED",
-        message: "Submission created by vendor",
-        actorAuthUserId: authUserId,
-        createdAt: new Date(),
-      },
-    ],
-  });
+  const timelineEvent = {
+    type: existing ? "RESUBMITTED" : "SUBMITTED",
+    message: existing
+      ? "Submission resubmitted after retake request"
+      : "Submission created by vendor",
+    actorAuthUserId: authUserId,
+    createdAt: new Date(),
+  };
+
+  const submission = existing
+    ? await updateSubmissionById(existing._id, {
+        vendorAuthUserId: authUserId,
+        photoIds: payload.photoIds,
+        aiAverageScore,
+        status: "Submitted",
+        adminComments: "",
+        reviewedByAuthUserId: "",
+        reviewedAt: null,
+        $push: {
+          timeline: timelineEvent,
+        },
+      })
+    : await createSubmission({
+        projectId: payload.projectId,
+        vendorAuthUserId: authUserId,
+        photoIds: payload.photoIds,
+        aiAverageScore,
+        status: "Submitted",
+        timeline: [timelineEvent],
+      });
 
   await updateProjectStatus(payload.projectId, "Submitted", authHeader);
+
+  await sendNotifications([
+    {
+      userId: authUserId,
+      type: "PROJECT",
+      title: "Submission created",
+          message: `Submission created for ${project.title || "project"}`,
+          meta: {
+            projectId: payload.projectId,
+            submissionId: String(submission._id),
+            workOrderNumber: project.workOrderNumber || "",
+          },
+        },
+      ]);
 
   return submission;
 };
@@ -116,12 +163,7 @@ const getSubmissionByIdService = async (submissionId) => {
 
 const getSubmissionByProjectService = async (projectId) => {
   const submission = await findSubmissionByProjectId(projectId);
-
-  if (!submission) {
-    throw new ApiError("Submission not found for this project", 404);
-  }
-
-  return submission;
+  return submission || null;
 };
 
 const reviewSubmissionService = async (
@@ -146,6 +188,36 @@ const reviewSubmissionService = async (
   });
 
   await updateProjectStatus(submission.projectId, nextStatus, authHeader);
+
+  await sendNotifications([
+    {
+      userId: authUserId,
+      type: "PROJECT",
+      title: "Submission reviewed",
+      message: `Submission was marked ${nextStatus}`,
+      meta: {
+        projectId: submission.projectId,
+        submissionId: String(submission._id),
+        status: nextStatus,
+      },
+    },
+    submission.vendorAuthUserId && submission.vendorAuthUserId !== authUserId
+      ? {
+          userId: submission.vendorAuthUserId,
+          type: "PROJECT",
+          title:
+            nextStatus === "Approved"
+              ? "Submission approved"
+              : "Submission reviewed",
+          message: `Your submission was marked ${nextStatus}`,
+          meta: {
+            projectId: submission.projectId,
+            submissionId: String(submission._id),
+            status: nextStatus,
+          },
+        }
+      : null,
+  ]);
 
   return pushTimelineEvent(updated._id, {
     type: nextStatus === "Approved" ? "APPROVED" : "REJECTED",
@@ -182,6 +254,33 @@ const requestRetakeService = async (
     "Retake Requested",
     authHeader
   );
+
+  await sendNotifications([
+    {
+      userId: authUserId,
+      type: "PROJECT",
+      title: "Retake requested",
+      message: "A retake was requested for the submission",
+      meta: {
+        projectId: submission.projectId,
+        submissionId: String(submission._id),
+        status: "Retake Requested",
+      },
+    },
+    submission.vendorAuthUserId && submission.vendorAuthUserId !== authUserId
+      ? {
+          userId: submission.vendorAuthUserId,
+          type: "PROJECT",
+          title: "Retake requested",
+          message: payload.adminComments || "A retake was requested for your submission",
+          meta: {
+            projectId: submission.projectId,
+            submissionId: String(submission._id),
+            status: "Retake Requested",
+          },
+        }
+      : null,
+  ]);
 
   return pushTimelineEvent(updated._id, {
     type: "RETAKE_REQUESTED",

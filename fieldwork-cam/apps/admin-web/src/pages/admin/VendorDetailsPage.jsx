@@ -13,28 +13,52 @@ import {
 } from "@mui/material";
 import {
   ArrowBackOutlined,
-  EmailOutlined,
-  PhoneOutlined,
-  LocationOnOutlined,
   BusinessOutlined,
   CalendarMonthOutlined,
-  LanguageOutlined,
+  EmailOutlined,
   GroupsOutlined,
-  StarOutlined,
-  EditOutlined,
+  ImageOutlined,
+  LanguageOutlined,
+  LocationOnOutlined,
+  PhoneOutlined,
+  StarRounded,
+  WorkOutlineRounded,
 } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { getVendorByIdApi } from "../../api/vendor.api";
 import { getProjectsApi } from "../../api/project.api";
+import { getInvoicesApi } from "../../api/invoice.api";
+import { getTicketsApi } from "../../api/support.api";
+import { getStaffApi } from "../../api/staff.api";
+import { getNotificationsApi } from "../../api/notification.api";
 
-// --- Global Styles ---
-const cardBaseSx = {
-  borderRadius: 2,
-  border: "1px solid #E9E1DB",
-  boxShadow: "none",
-  overflow: "hidden",
-  bgcolor: "#FFFFFF",
-};
+const statCards = [
+  {
+    key: "totalProjects",
+    label: "Total Projects",
+    color: "#1DA1F2",
+    icon: <BusinessOutlined sx={{ fontSize: 18 }} />,
+  },
+  {
+    key: "totalCompleted",
+    label: "Completed",
+    color: "#22C55E",
+    icon: <WorkOutlineRounded sx={{ fontSize: 18 }} />,
+  },
+  {
+    key: "totalActiveProjects",
+    label: "Active Now",
+    color: "#F59E0B",
+    icon: <WorkOutlineRounded sx={{ fontSize: 18 }} />,
+  },
+  {
+    key: "approvalRate",
+    label: "Avg Rating",
+    color: "#D4B5A5",
+    icon: <StarRounded sx={{ fontSize: 18 }} />,
+    formatter: (value) => formatRating(value),
+  },
+];
 
 export default function VendorDetailsPage() {
   const navigate = useNavigate();
@@ -42,6 +66,10 @@ export default function VendorDetailsPage() {
 
   const [vendor, setVendor] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -49,144 +77,308 @@ export default function VendorDetailsPage() {
     try {
       setLoading(true);
       setError("");
-      const [vendorRes, projectsRes] = await Promise.all([
+
+      const [
+        vendorResult,
+        projectsResult,
+        invoicesResult,
+        ticketsResult,
+        staffResult,
+        notificationsResult,
+      ] = await Promise.allSettled([
         getVendorByIdApi(vendorId),
         getProjectsApi(),
+        getInvoicesApi(),
+        getTicketsApi(),
+        getStaffApi(),
+        getNotificationsApi(),
       ]);
-      const vendorData = vendorRes?.data || vendorRes || null;
-      const projectData = projectsRes?.data || projectsRes || [];
+
+      const unwrap = (result) =>
+        result.status === "fulfilled" ? result.value?.data || result.value || [] : [];
+
+      const vendorData =
+        vendorResult.status === "fulfilled"
+          ? vendorResult.value?.data || vendorResult.value || null
+          : null;
+
       setVendor(vendorData);
-      setProjects(Array.isArray(projectData) ? projectData : []);
+      setProjects(Array.isArray(unwrap(projectsResult)) ? unwrap(projectsResult) : []);
+      setInvoices(Array.isArray(unwrap(invoicesResult)) ? unwrap(invoicesResult) : []);
+      setTickets(Array.isArray(unwrap(ticketsResult)) ? unwrap(ticketsResult) : []);
+      setStaff(Array.isArray(unwrap(staffResult)) ? unwrap(staffResult) : []);
+      setNotifications(
+        Array.isArray(unwrap(notificationsResult)) ? unwrap(notificationsResult) : [],
+      );
     } catch (err) {
       setError(
         err?.response?.data?.message ||
+          err?.response?.data?.error ||
           err?.message ||
           "Failed to load vendor details",
       );
       setVendor(null);
       setProjects([]);
+      setInvoices([]);
+      setTickets([]);
+      setStaff([]);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
   }, [vendorId]);
 
   useEffect(() => {
-    if (vendorId) fetchVendor();
+    if (vendorId) {
+      fetchVendor();
+    }
   }, [vendorId, fetchVendor]);
 
-  const stats = useMemo(
-    () => {
-      const vendorProjects = projects.filter(
-        (project) => project.assignedVendorAuthUserId === vendor?.authUserId,
-      );
-
-      return {
-        totalProjects: vendorProjects.length,
-        completedProjects: vendorProjects.filter((project) =>
-          ["Approved", "Completed"].includes(project.status),
-        ).length,
-        activeProjects: vendorProjects.filter((project) =>
-          ["New", "In Progress", "Submitted", "Retake Requested"].includes(
-            project.status,
-          ),
-        ).length,
-        rating: typeof vendor?.rating === "number" && vendor.rating > 0 ? vendor.rating : "-",
-      };
-    },
-    [projects, vendor],
+  const authUserId = vendor?.authUserId || "";
+  const vendorProjects = useMemo(
+    () =>
+      projects.filter(
+        (project) =>
+          project.assignedVendorAuthUserId === authUserId ||
+          project.vendorAuthUserId === authUserId,
+      ),
+    [authUserId, projects],
   );
 
-  const statusChip = (status = "") => {
-    const map = {
-      ACTIVE: { bg: "#ECFDF5", color: "#10B981", label: "Active" },
-      SUSPENDED: { bg: "#FEF2F2", color: "#EF4444", label: "Suspended" },
-      INACTIVE: { bg: "#F9FAFB", color: "#6B7280", label: "Inactive" },
-    };
-    const current = map[status] || {
-      bg: "#F3F4F6",
-      color: "#6B7280",
-      label: status || "—",
-    };
-    return (
-      <Chip
-        label={current.label}
-        size="small"
-        sx={{
-          bgcolor: current.bg,
-          color: current.color,
-          fontWeight: 700,
-          borderRadius: 1,
-          fontSize: 11,
-          height: 24,
-        }}
-      />
-    );
-  };
+  const vendorInvoices = useMemo(
+    () =>
+      invoices.filter(
+        (invoice) =>
+          invoice.vendorAuthUserId === authUserId ||
+          invoice.vendorId === authUserId ||
+          vendorProjects.some(
+            (project) => String(project._id || project.id) === String(invoice.projectId),
+          ),
+      ),
+    [authUserId, invoices, vendorProjects],
+  );
 
-  const initials = (value = "") => {
-    const parts = value.trim().split(" ").filter(Boolean);
-    if (!parts.length) return "V";
-    if (parts.length === 1) return parts[0][0]?.toUpperCase() || "V";
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  };
+  const vendorTickets = useMemo(
+    () =>
+      tickets.filter(
+        (ticket) =>
+          ticket.vendorAuthUserId === authUserId || ticket.userId === authUserId,
+      ),
+    [authUserId, tickets],
+  );
 
-  if (loading)
+  const vendorStaff = useMemo(
+    () =>
+      staff.filter(
+        (member) =>
+          member.vendorAuthUserId === authUserId ||
+          member.createdByVendorAuthUserId === authUserId,
+      ),
+    [authUserId, staff],
+  );
+
+  const vendorNotifications = useMemo(
+    () =>
+      notifications.filter((item) => {
+        const meta = item.meta || {};
+        return (
+          item.userId === authUserId ||
+          meta.vendorAuthUserId === authUserId ||
+          meta.assignedVendorAuthUserId === authUserId
+        );
+      }),
+    [authUserId, notifications],
+  );
+
+  const stats = useMemo(() => {
+    const completedProjects = vendorProjects.filter((item) =>
+      ["Approved", "Completed"].includes(item.status),
+    ).length;
+    const activeProjects = vendorProjects.filter((item) =>
+      ["New", "In Progress", "Submitted", "Retake Requested"].includes(item.status),
+    ).length;
+    const submittedProjects = vendorProjects.filter((item) =>
+      ["Submitted", "Approved", "Completed", "Rejected"].includes(item.status),
+    ).length;
+    const approvedProjects = vendorProjects.filter((item) =>
+      ["Approved", "Completed"].includes(item.status),
+    ).length;
+
+    return {
+      totalProjects: vendorProjects.length,
+      totalCompleted: completedProjects,
+      totalActiveProjects: activeProjects,
+      approvalRate: submittedProjects
+        ? (approvedProjects / submittedProjects) * 5
+        : Number(vendor?.rating || 0),
+    };
+  }, [vendor?.rating, vendorProjects]);
+
+  const recentProjects = useMemo(
+    () =>
+      [...vendorProjects]
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt || b.createdAt).getTime() -
+            new Date(a.updatedAt || a.createdAt).getTime(),
+        )
+        .slice(0, 4)
+        .map((project) => {
+          const linkedInvoice = vendorInvoices.find(
+            (item) => String(item.projectId) === String(project._id || project.id),
+          );
+          const pendingAmount =
+            linkedInvoice && String(linkedInvoice.status || "").toUpperCase() !== "PAID"
+              ? Number(linkedInvoice.totalDue || linkedInvoice.amount || 0)
+              : 0;
+
+          return {
+            id: project.workOrderNumber || project._id || project.id,
+            clientName: project.clientName || "Client",
+            projectName: project.title || "Untitled Project",
+            amount: Number(linkedInvoice?.totalDue || linkedInvoice?.amount || 0),
+            pendingAmount,
+          };
+        }),
+    [vendorInvoices, vendorProjects],
+  );
+
+  const activity = useMemo(() => {
+    const notificationActivity = [...vendorNotifications]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || b.updatedAt).getTime() -
+          new Date(a.createdAt || a.updatedAt).getTime(),
+      )
+      .slice(0, 5)
+      .map((item) => ({
+        id: item._id || item.id,
+        title: item.title || "Notification",
+        subtitle: item.message || "",
+        timeAgo: formatRelativeTime(item.createdAt || item.updatedAt),
+        color: activityColor(item.type || item.entityType),
+      }));
+
+    if (notificationActivity.length) {
+      return notificationActivity;
+    }
+
+    return [
+      ...vendorTickets.map((item) => ({
+        id: `ticket-${item._id || item.id}`,
+        title: item.subject || item.title || "Support ticket updated",
+        subtitle: item.statusLabel || item.status || "Ticket activity",
+        timeAgo: formatRelativeTime(item.updatedAt || item.createdAt),
+        color: "#F59E0B",
+        sortTime: new Date(item.updatedAt || item.createdAt).getTime(),
+      })),
+      ...vendorProjects.map((item) => ({
+        id: `project-${item._id || item.id}`,
+        title: `${item.title || "Project"} ${vendorProjectVerb(item.status)}`,
+        subtitle: item.workOrderNumber || item.serviceType || "Project activity",
+        timeAgo: formatRelativeTime(item.updatedAt || item.createdAt),
+        color: "#3B82F6",
+        sortTime: new Date(item.updatedAt || item.createdAt).getTime(),
+      })),
+    ]
+      .filter((item) => !Number.isNaN(item.sortTime))
+      .sort((a, b) => b.sortTime - a.sortTime)
+      .slice(0, 5)
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        timeAgo: item.timeAgo,
+        color: item.color,
+      }));
+  }, [vendorNotifications, vendorProjects, vendorTickets]);
+
+  const quickInfo = useMemo(
+    () => [
+      { label: "Company", value: vendor?.companyName || "" },
+      { label: "Website", value: vendor?.website || "" },
+      {
+        label: "Location",
+        value: vendor?.serviceArea || vendor?.address || vendor?.location || "",
+      },
+      { label: "Member Since", value: vendor?.joinedAt || vendor?.createdAt || null },
+      {
+        label: "Team Size",
+        value: vendorStaff.length ? `${vendorStaff.length} photographers` : "",
+      },
+    ],
+    [vendor, vendorStaff.length],
+  );
+
+  const fullName = vendor?.fullName || vendor?.contactName || "";
+  const companyName = vendor?.companyName || "";
+  const jobTitle = vendor?.jobTitle || vendor?.roleTitle || "";
+  const bio = vendor?.bio || vendor?.description || "";
+  const email = vendor?.email || vendor?.businessEmail || "";
+  const phone = vendor?.phone || vendor?.businessPhone || "";
+  const location = vendor?.location || vendor?.serviceArea || vendor?.address || "";
+  const website = vendor?.website || "";
+  const serviceTypes = vendor?.serviceTypes || [];
+  const joinedAt = vendor?.joinedAt || vendor?.createdAt;
+  const avatarUrl = vendor?.profilePhotoUrl || vendor?.avatarUrl || "";
+  const bannerImageUrl = vendor?.bannerImageUrl || vendor?.meta?.bannerImageUrl || "";
+  const isActive = String(vendor?.status || "").toUpperCase() === "ACTIVE";
+
+  if (loading) {
     return (
       <Stack
         alignItems="center"
         justifyContent="center"
-        sx={{ minHeight: 400 }}
         spacing={2}
+        sx={{ minHeight: 360 }}
       >
-        <CircularProgress sx={{ color: "#8E8175" }} />
-        <Typography color="text.secondary" variant="body2">
+        <CircularProgress />
+        <Typography sx={{ color: "#6B7280", fontWeight: 600 }}>
           Loading vendor profile...
         </Typography>
       </Stack>
     );
+  }
 
-  if (error || !vendor)
+  if (error || !vendor) {
     return (
-      <Box sx={{ p: 4 }}>
+      <Box sx={{ px: { xs: 1.5, md: 2 }, py: { xs: 1.5, md: 2 } }}>
         <Button
-          startIcon={<ArrowBackOutlined />}
+          startIcon={<ArrowBackOutlined sx={{ fontSize: 18 }} />}
           onClick={() => navigate("/admin/vendors")}
-          sx={{ mb: 2, color: "#6B7280" }}
+          sx={{
+            mb: 2,
+            textTransform: "none",
+            color: "#6B7280",
+            fontWeight: 600,
+          }}
         >
-          Back
+          Back to Vendors
         </Button>
-        {error ? (
-          <Alert severity="error">
-            {error}{" "}
-            <Button size="small" onClick={fetchVendor}>
-              Retry
-            </Button>
-          </Alert>
-        ) : (
-          <Card sx={{ ...cardBaseSx, p: 4, textAlign: "center" }}>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Vendor not found
-            </Typography>
-          </Card>
-        )}
+        <Alert severity="error">
+          {error || "Vendor not found"}
+          <Button size="small" onClick={fetchVendor} sx={{ ml: 1 }}>
+            Retry
+          </Button>
+        </Alert>
       </Box>
     );
+  }
 
   return (
     <Box
       sx={{
-        px: { xs: 2, md: 4 },
-        py: 3,
+        px: { xs: 1.5, md: 2 },
+        py: { xs: 1.5, md: 2 },
         bgcolor: "#F8F5F2",
-        minHeight: "100vh",
+        minHeight: "100%",
       }}
     >
-      {/* Top Navigation */}
       <Button
         startIcon={<ArrowBackOutlined sx={{ fontSize: 18 }} />}
         onClick={() => navigate("/admin/vendors")}
         sx={{
-          mb: 3,
+          mb: 1.5,
           textTransform: "none",
           color: "#6B7280",
           fontWeight: 600,
@@ -196,418 +388,554 @@ export default function VendorDetailsPage() {
         Back to Vendor Directory
       </Button>
 
-      {/* Hero Profile Card */}
-      <Card sx={{ ...cardBaseSx, mb: 3 }}>
+      <Card
+        sx={{
+          borderRadius: 1,
+          overflow: "hidden",
+          border: "1px solid #E9E1DB",
+          boxShadow: "none",
+        }}
+      >
         <Box
           sx={{
-            height: 140,
-            bgcolor: "#E7E0D9",
-            backgroundImage:
-              "linear-gradient(135deg, #E7E0D9 0%, #D8CEC4 100%)",
+            height: 132,
+            background: bannerImageUrl
+              ? `center / cover no-repeat url(${bannerImageUrl})`
+              : "linear-gradient(180deg, rgba(247,247,247,1) 0%, rgba(224,224,224,1) 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#1F2937",
           }}
-        />
-        <Box sx={{ px: 4, pb: 4 }}>
+        >
+          {!bannerImageUrl ? <ImageOutlined sx={{ fontSize: 56, opacity: 0.85 }} /> : null}
+        </Box>
+
+        <Box sx={{ px: { xs: 2, md: 2.5 }, pb: 2.25 }}>
           <Stack
-            direction={{ xs: "column", sm: "row" }}
+            direction={{ xs: "column", md: "row" }}
             justifyContent="space-between"
-            alignItems="flex-end"
-            sx={{ mt: -5 }}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            spacing={1.5}
+            sx={{ mt: -2.8 }}
           >
-            <Stack direction="row" spacing={3} alignItems="flex-end">
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.75}
+              alignItems={{ xs: "flex-start", sm: "flex-end" }}
+            >
               <Avatar
+                src={avatarUrl}
                 sx={{
-                  width: 110,
-                  height: 110,
-                  bgcolor: "#8E8175",
-                  fontSize: 36,
-                  fontWeight: 800,
-                  border: "5px solid #FFFFFF",
-                  boxShadow: "0px 4px 20px rgba(0,0,0,0.08)",
+                  width: 72,
+                  height: 72,
+                  borderRadius: 1,
+                  border: "3px solid #FFFFFF",
+                  boxShadow: "none",
+                  bgcolor: "#A5B58A",
+                  fontSize: 22,
+                  fontWeight: 700,
                 }}
               >
-                {initials(vendor.companyName || vendor.fullName || "Vendor")}
+                {!avatarUrl ? getInitials(companyName || fullName || "Vendor") : null}
               </Avatar>
-              <Box sx={{ pb: 1 }}>
-                <Stack direction="row" spacing={1.5} alignItems="center">
+
+              <Box sx={{ pt: { xs: 0, sm: 1.9 } }}>
+                <Stack
+                  direction="row"
+                  spacing={0.9}
+                  alignItems="center"
+                  flexWrap="wrap"
+                >
                   <Typography
                     sx={{
-                      fontSize: 32,
-                      fontWeight: 800,
+                      fontSize: 28,
+                      fontWeight: 700,
                       color: "#1F2937",
+                      lineHeight: 1.15,
                       letterSpacing: "-0.02em",
                     }}
                   >
-                    {vendor.companyName || "Unnamed Vendor"}
+                    {companyName || fullName || "Unnamed Vendor"}
                   </Typography>
-                  {statusChip(vendor.status)}
+
+                  <InlineStatusChip active={isActive} />
+
+                  {Number(stats?.approvalRate || 0) > 0 ? (
+                    <Stack
+                      direction="row"
+                      spacing={0.35}
+                      alignItems="center"
+                      sx={{ color: "#F59E0B" }}
+                    >
+                      <StarRounded sx={{ fontSize: 16 }} />
+                      <Typography
+                        sx={{ fontSize: 12.5, fontWeight: 600, color: "#4B5563" }}
+                      >
+                        {formatRating(stats?.approvalRate)}
+                      </Typography>
+                    </Stack>
+                  ) : null}
                 </Stack>
+
                 <Typography
-                  sx={{ fontSize: 16, color: "#6B7280", fontWeight: 500 }}
+                  sx={{ mt: 0.45, fontSize: 13, color: "#9CA3AF", fontWeight: 500 }}
                 >
-                  {vendor.roleTitle || vendor.fullName || "Vendor Partner"}
+                  {jobTitle || fullName || "-"}
                 </Typography>
               </Box>
             </Stack>
-            <Button
-              variant="contained"
-              startIcon={<EditOutlined />}
-              sx={{
-                height: 40,
-                px: 3,
-                borderRadius: 1.5,
-                textTransform: "none",
-                fontWeight: 700,
-                bgcolor: "#FFFFFF",
-                color: "#374151",
-                border: "1px solid #E5E7EB",
-                boxShadow: "none",
-                "&:hover": {
-                  bgcolor: "#F9FAFB",
-                  boxShadow: "none",
-                  borderColor: "#D1D5DB",
-                },
-              }}
-            >
-              Edit Profile
-            </Button>
           </Stack>
 
-          <Divider sx={{ my: 3, borderColor: "#F3F4F6" }} />
-
           <Stack
-            direction="row"
-            spacing={4}
+            direction={{ xs: "column", md: "row" }}
+            spacing={{ xs: 1.2, md: 2 }}
             flexWrap="wrap"
             useFlexGap
-            sx={{ color: "#6B7280" }}
+            sx={{ mt: 1.8, color: "#7A7E87" }}
           >
-            <InlineInfo
-              icon={<EmailOutlined />}
-              value={vendor.email || vendor.businessEmail}
-            />
-            <InlineInfo
-              icon={<PhoneOutlined />}
-              value={vendor.phone || vendor.businessPhone}
-            />
-            <InlineInfo
-              icon={<LocationOnOutlined />}
-              value={vendor.serviceArea || vendor.address}
-            />
-            <InlineInfo
-              icon={<CalendarMonthOutlined />}
-              value={
-                vendor.joinedAt
-                  ? `Joined ${new Date(vendor.joinedAt).toLocaleDateString()}`
-                  : null
-              }
-            />
+            {email ? (
+              <MetaItem icon={<EmailOutlined sx={{ fontSize: 16 }} />} text={email} />
+            ) : null}
+            {phone ? (
+              <MetaItem icon={<PhoneOutlined sx={{ fontSize: 16 }} />} text={phone} />
+            ) : null}
+            {location ? (
+              <MetaItem
+                icon={<LocationOnOutlined sx={{ fontSize: 16 }} />}
+                text={location}
+              />
+            ) : null}
+            {companyName ? (
+              <MetaItem
+                icon={<BusinessOutlined sx={{ fontSize: 16 }} />}
+                text={companyName}
+              />
+            ) : null}
+            {joinedAt ? (
+              <MetaItem
+                icon={<CalendarMonthOutlined sx={{ fontSize: 16 }} />}
+                text={`Joined ${formatDate(joinedAt)}`}
+              />
+            ) : null}
           </Stack>
         </Box>
       </Card>
 
-      {/* Metrics Row */}
       <Box
         sx={{
+          mt: 1.5,
           display: "grid",
-          gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
-          gap: 2.5,
-          mb: 3,
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            lg: "repeat(4, minmax(0, 1fr))",
+          },
+          gap: 1.5,
         }}
       >
-        <MetricCard label="Total Projects" value={stats.totalProjects} />
-        <MetricCard label="Completed" value={stats.completedProjects} />
-        <MetricCard label="Active Now" value={stats.activeProjects} />
-        <MetricCard label="Avg Rating" value={stats.rating} isRating />
+        {statCards.map((item) => (
+          <StatCard
+            key={item.key}
+            label={item.label}
+            color={item.color}
+            icon={item.icon}
+            value={
+              item.formatter
+                ? item.formatter(stats?.[item.key])
+                : stats?.[item.key] ?? 0
+            }
+          />
+        ))}
       </Box>
 
-      {/* Content Grid */}
       <Box
         sx={{
+          mt: 1.5,
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", lg: "1.2fr 0.8fr" },
-          gap: 3,
+          gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 2fr) 320px" },
+          gap: 1.5,
+          alignItems: "start",
         }}
       >
-        {/* Left Column: About & Projects */}
-        <Stack spacing={3}>
-          <Card sx={{ ...cardBaseSx, p: 4 }}>
-            <Typography
-              sx={{ fontSize: 18, fontWeight: 800, color: "#1F2937", mb: 2 }}
-            >
-              Professional Bio
-            </Typography>
-            <Typography
-              sx={{ fontSize: 15, color: "#4B5563", lineHeight: 1.7 }}
-            >
-              {vendor.bio ||
-                vendor.description ||
-                "No vendor description available."}
-            </Typography>
+        <Stack spacing={1.5}>
+          <SectionCard title="About">
+            {bio ? (
+              <Typography
+                sx={{
+                  fontSize: 13.5,
+                  lineHeight: 1.75,
+                  color: "#7A7E87",
+                  maxWidth: 760,
+                }}
+              >
+                {bio}
+              </Typography>
+            ) : (
+              <EmptyState label="No about information added yet." />
+            )}
+          </SectionCard>
 
-            <Typography
-              sx={{
-                fontSize: 18,
-                fontWeight: 800,
-                color: "#1F2937",
-                mt: 4,
-                mb: 2,
-              }}
-            >
-              Specialties
-            </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {(vendor.serviceTypes || []).length ? (
-                vendor.serviceTypes.map((item, idx) => (
+          <SectionCard title="Specialties">
+            {serviceTypes.length ? (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {serviceTypes.map((item) => (
                   <Chip
-                    key={idx}
+                    key={item}
                     label={item}
                     sx={{
-                      bgcolor: "#F3F4F6",
-                      color: "#374151",
-                      fontWeight: 600,
-                      borderRadius: 1.5,
-                      fontSize: 12,
+                      bgcolor: "#FFF2E8",
+                      color: "#F97316",
+                      border: "1px solid #FFD4B5",
+                      fontWeight: 700,
+                      height: 28,
+                      borderRadius: 2,
                     }}
                   />
-                ))
-              ) : (
-                <Typography variant="body2" color="text.disabled">
-                  No specialties listed
-                </Typography>
-              )}
-            </Stack>
-          </Card>
+                ))}
+              </Stack>
+            ) : (
+              <EmptyState label="No specialties added yet." />
+            )}
+          </SectionCard>
 
-          <Card sx={{ ...cardBaseSx, p: 4 }}>
-            <Typography
-              sx={{ fontSize: 18, fontWeight: 800, color: "#1F2937", mb: 3 }}
-            >
-              Recent Projects
-            </Typography>
-            <Stack spacing={2}>
-              {(vendor.recentProjects || []).length ? (
-                vendor.recentProjects.map((item, idx) => (
-                  <Box
-                    key={idx}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 2,
-                      border: "1px solid #F3F4F6",
-                      "&:hover": { bgcolor: "#F9FAFB" },
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="center"
-                    >
-                      <Box>
-                        <Typography
-                          sx={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            color: "#111827",
-                          }}
-                        >
-                          {item.title || item.projectName}
-                        </Typography>
-                        <Typography
-                          sx={{ fontSize: 12, color: "#9CA3AF", mt: 0.5 }}
-                        >
-                          {item.projectCode ||
-                            item.workOrderNumber ||
-                            "No Project ID"}
-                        </Typography>
-                      </Box>
-                      <Typography
-                        sx={{ fontSize: 15, fontWeight: 800, color: "#111827" }}
-                      >
-                        {item.amount ? `$${item.amount}` : "—"}
-                      </Typography>
-                    </Stack>
-                  </Box>
-                ))
-              ) : (
-                <EmptyStateBox label="No projects recorded yet" />
-              )}
-            </Stack>
-          </Card>
+          <SectionCard title="Recent Projects">
+            {recentProjects.length ? (
+              <Stack spacing={1.1}>
+                {recentProjects.map((project) => (
+                  <ProjectRow key={project.id} project={project} />
+                ))}
+              </Stack>
+            ) : (
+              <EmptyState label="No recent projects available." />
+            )}
+          </SectionCard>
         </Stack>
 
-        {/* Right Column: Quick Info & Activity */}
-        <Stack spacing={3}>
-          <Card sx={{ ...cardBaseSx, p: 4 }}>
-            <Typography
-              sx={{ fontSize: 18, fontWeight: 800, color: "#1F2937", mb: 3 }}
-            >
-              Organization Info
-            </Typography>
-            <Stack spacing={3}>
-              <InfoRow
-                icon={<BusinessOutlined />}
-                label="Company"
-                value={vendor.companyName}
-              />
-              <InfoRow
-                icon={<LanguageOutlined />}
-                label="Website"
-                value={vendor.website}
-              />
-              <InfoRow
-                icon={<LocationOnOutlined />}
-                label="Primary Location"
-                value={vendor.serviceArea || vendor.address}
-              />
-              <InfoRow
-                icon={<GroupsOutlined />}
-                label="Team Composition"
-                value={
-                  vendor.teamSize ? `${vendor.teamSize} photographers` : null
-                }
-              />
-            </Stack>
-          </Card>
-
-          <Card sx={{ ...cardBaseSx, p: 4 }}>
-            <Typography
-              sx={{ fontSize: 18, fontWeight: 800, color: "#1F2937", mb: 3 }}
-            >
-              System Activity
-            </Typography>
-            <Stack spacing={3} sx={{ position: "relative" }}>
-              {(vendor.recentActivity || []).length ? (
-                vendor.recentActivity.map((item, idx) => (
-                  <Stack
-                    key={idx}
-                    direction="row"
-                    spacing={2}
-                    alignItems="flex-start"
-                  >
-                    <Box
-                      sx={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: "50%",
-                        bgcolor: item.color || "#8E8175",
-                        mt: 0.7,
-                        flexShrink: 0,
-                      }}
+        <Stack spacing={1.5}>
+          <SectionCard title="Quick Info" bodySx={{ p: 0 }}>
+            {quickInfo.some((item) => item?.value) ? (
+              <Stack divider={<Divider flexItem />} sx={{ px: 2.25 }}>
+                {quickInfo
+                  .filter((item) => item?.value)
+                  .map((item) => (
+                    <QuickInfoRow
+                      key={item.label}
+                      item={item}
+                      website={website}
                     />
-                    <Box>
-                      <Typography
-                        sx={{ fontSize: 14, fontWeight: 700, color: "#111827" }}
-                      >
-                        {item.title || "Activity Update"}
-                      </Typography>
-                      <Typography
-                        sx={{ fontSize: 12, color: "#9CA3AF", mt: 0.4 }}
-                      >
-                        {item.timeAgo || item.date}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                ))
-              ) : (
-                <EmptyStateBox label="No recent activity" />
-              )}
-            </Stack>
-          </Card>
+                  ))}
+              </Stack>
+            ) : (
+              <Box sx={{ px: 2.25, pb: 2.1 }}>
+                <EmptyState label="No quick info available." compact />
+              </Box>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Recent Activity">
+            {activity.length ? (
+              <Stack spacing={1.6}>
+                {activity.map((item) => (
+                  <ActivityRow key={item.id} item={item} />
+                ))}
+              </Stack>
+            ) : (
+              <EmptyState label="No recent activity available." />
+            )}
+          </SectionCard>
         </Stack>
       </Box>
     </Box>
   );
 }
 
-// --- Internal Helper Components ---
-
-function InlineInfo({ icon, value }) {
-  if (!value) return null;
+function SectionCard({ title, children, bodySx }) {
   return (
-    <Stack direction="row" spacing={1} alignItems="center">
-      <Box
-        sx={{ color: "#9CA3AF", display: "flex", "& svg": { fontSize: 18 } }}
-      >
-        {icon}
-      </Box>
-      <Typography sx={{ fontSize: 14, color: "#4B5563", fontWeight: 500 }}>
-        {value}
-      </Typography>
-    </Stack>
-  );
-}
-
-function MetricCard({ label, value, isRating }) {
-  return (
-    <Card sx={{ ...cardBaseSx, p: 3, bgcolor: "#FFFFFF" }}>
-      <Typography
-        sx={{
-          fontSize: 12,
-          color: "#9CA3AF",
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        {label}
-      </Typography>
-      <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 1.5 }}>
-        <Typography sx={{ fontSize: 32, fontWeight: 900, color: "#1F2937" }}>
-          {value}
+    <Card
+      sx={{
+        borderRadius: 1,
+        border: "1px solid #E9E1DB",
+        boxShadow: "none",
+      }}
+    >
+      <Box sx={{ px: 2, pt: 2, pb: 1.1 }}>
+        <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#1F2937" }}>
+          {title}
         </Typography>
-        {isRating && <StarOutlined sx={{ color: "#F59E0B", fontSize: 20 }} />}
-      </Stack>
+      </Box>
+      <Box sx={{ px: 2, pb: 2, ...bodySx }}>{children}</Box>
     </Card>
   );
 }
 
-function InfoRow({ icon, label, value }) {
+function StatCard({ icon, color, value, label }) {
   return (
-    <Stack direction="row" spacing={2} alignItems="flex-start">
+    <Card
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        border: "1px solid #E9E1DB",
+        boxShadow: "none",
+      }}
+    >
       <Box
         sx={{
-          color: "#8E8175",
-          bgcolor: "#F8F5F2",
-          p: 1,
-          borderRadius: 1.5,
+          width: 34,
+          height: 34,
+          borderRadius: "50%",
+          bgcolor: color,
+          color: "#FFFFFF",
           display: "flex",
-          "& svg": { fontSize: 20 },
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         {icon}
       </Box>
+
+      <Typography
+        sx={{
+          mt: 1.4,
+          fontSize: 22,
+          fontWeight: 700,
+          lineHeight: 1.1,
+          color: "#1F2937",
+        }}
+      >
+        {value}
+      </Typography>
+
+      <Typography sx={{ mt: 1.1, fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}>
+        {label}
+      </Typography>
+    </Card>
+  );
+}
+
+function InlineStatusChip({ active }) {
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center">
+      <Box
+        sx={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          bgcolor: active ? "#22C55E" : "#9CA3AF",
+        }}
+      />
+      <Typography
+        sx={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: active ? "#22C55E" : "#9CA3AF",
+        }}
+      >
+        {active ? "Active" : "Inactive"}
+      </Typography>
+    </Stack>
+  );
+}
+
+function MetaItem({ icon, text }) {
+  return (
+    <Stack direction="row" spacing={0.75} alignItems="center">
+      <Box sx={{ color: "#9CA3AF", display: "flex", alignItems: "center" }}>
+        {icon}
+      </Box>
+      <Typography sx={{ fontSize: 12.5, color: "#9CA3AF", fontWeight: 500 }}>
+        {text}
+      </Typography>
+    </Stack>
+  );
+}
+
+function QuickInfoRow({ item, website }) {
+  const value =
+    item.label === "Website" && website
+      ? website.replace(/^https?:\/\//, "")
+      : item.label === "Member Since"
+        ? formatDate(item.value)
+        : item.value;
+
+  return (
+    <Box sx={{ py: 1.45 }}>
+      <Typography sx={{ fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}>
+        {item.label}
+      </Typography>
+      <Typography
+        sx={{
+          mt: 0.45,
+          fontSize: 12.5,
+          color: item.label === "Website" && website ? "#3B82F6" : "#374151",
+          fontWeight: 600,
+          wordBreak: "break-word",
+        }}
+      >
+        {value || "N/A"}
+      </Typography>
+    </Box>
+  );
+}
+
+function ProjectRow({ project }) {
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr", md: "1.2fr 1.35fr 0.5fr 0.45fr" },
+        gap: 1.2,
+        alignItems: "center",
+        px: 1.5,
+        py: 1.25,
+        border: "1px solid #E9E1DB",
+        borderRadius: 1,
+      }}
+    >
+      <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "#374151" }}>
+        {project.clientName}
+      </Typography>
+
       <Box>
-        <Typography
-          sx={{
-            fontSize: 11,
-            color: "#9CA3AF",
-            fontWeight: 700,
-            textTransform: "uppercase",
-          }}
-        >
-          {label}
+        <Typography sx={{ fontSize: 12.5, color: "#374151", fontWeight: 600 }}>
+          {project.projectName}
         </Typography>
-        <Typography
-          sx={{ mt: 0.3, fontSize: 15, color: "#1F2937", fontWeight: 600 }}
-        >
-          {value || "—"}
+        <Typography sx={{ fontSize: 11.5, color: "#9CA3AF", mt: 0.25, fontWeight: 500 }}>
+          {project.id}
+        </Typography>
+      </Box>
+
+      <Typography
+        sx={{
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: "#374151",
+          textAlign: { md: "right" },
+        }}
+      >
+        {formatCurrency(project.amount)}
+      </Typography>
+
+      <Typography
+        sx={{
+          fontSize: 12,
+          color: "#9CA3AF",
+          textAlign: { md: "right" },
+          fontWeight: 600,
+        }}
+      >
+        {formatCurrency(project.pendingAmount)}
+      </Typography>
+    </Box>
+  );
+}
+
+function ActivityRow({ item }) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="flex-start">
+      <Box
+        sx={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          bgcolor: item.color || "#22C55E",
+          mt: 0.7,
+          flexShrink: 0,
+        }}
+      />
+      <Box>
+        <Typography sx={{ fontSize: 12.5, color: "#374151", fontWeight: 600 }}>
+          {item.title}
+        </Typography>
+        <Typography sx={{ mt: 0.25, fontSize: 12, color: "#9CA3AF", fontWeight: 500 }}>
+          {item.timeAgo || item.subtitle || ""}
         </Typography>
       </Box>
     </Stack>
   );
 }
 
-function EmptyStateBox({ label }) {
+function getInitials(value = "") {
+  const parts = value.trim().split(" ").filter(Boolean);
+  if (!parts.length) return "V";
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() || "V";
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
+function formatDate(value) {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatCurrency(value) {
+  const amount = Number(value || 0);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatRating(value) {
+  const amount = Number(value ?? 0);
+  return Number.isFinite(amount) ? amount.toFixed(1) : "0.0";
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  if (Number.isNaN(diffMs)) return "";
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+}
+
+function activityColor(type = "") {
+  const normalized = String(type || "").toUpperCase();
+  if (normalized.includes("PAYMENT") || normalized.includes("INVOICE")) return "#22C55E";
+  if (normalized.includes("SUPPORT")) return "#F59E0B";
+  if (normalized.includes("STAFF")) return "#8B5CF6";
+  return "#3B82F6";
+}
+
+function vendorProjectVerb(status = "") {
+  if (status === "Submitted") return "submitted";
+  if (status === "Approved") return "approved";
+  if (status === "Completed") return "completed";
+  if (status === "Retake Requested") return "needs retake";
+  if (status === "In Progress") return "in progress";
+  return "updated";
+}
+
+function EmptyState({ label, compact = false }) {
   return (
     <Box
       sx={{
-        py: 4,
-        textAlign: "center",
-        border: "1px dashed #E5DED7",
-        borderRadius: 2,
+        minHeight: compact ? 76 : 112,
+        border: "1px dashed #E6DED7",
+        borderRadius: 1,
         bgcolor: "#FCFAF8",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: 2,
       }}
     >
-      <Typography sx={{ fontSize: 13, color: "#9CA3AF" }}>{label}</Typography>
+      <Typography
+        sx={{ fontSize: 12.5, color: "#A1A7B0", textAlign: "center", fontWeight: 500 }}
+      >
+        {label}
+      </Typography>
     </Box>
   );
 }

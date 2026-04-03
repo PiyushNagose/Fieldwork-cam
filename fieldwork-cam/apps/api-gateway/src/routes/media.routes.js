@@ -15,30 +15,48 @@ router.post(
   authMiddleware,
   upload.single("photo"),
   asyncHandler(async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Photo file is required",
+      });
+    }
+
     const form = new FormData();
     form.append(
       "photo",
       fs.createReadStream(req.file.path),
-      req.file.originalname,
+      {
+        filename: req.file.originalname || req.file.filename || "upload.jpg",
+        contentType: req.file.mimetype || "image/jpeg",
+      },
     );
 
     Object.keys(req.body || {}).forEach((key) => {
-      form.append(key, req.body[key]);
+      if (req.body[key] !== undefined && req.body[key] !== null) {
+        form.append(key, String(req.body[key]));
+      }
     });
 
-    const data = await forwardRequest({
-      method: "post",
-      url: `${SERVICES.MEDIA}/media/upload`,
-      data: form,
-      headers: {
-        ...form.getHeaders(),
-        authorization: req.headers.authorization,
-      },
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity,
-    });
+    try {
+      const data = await forwardRequest({
+        method: "post",
+        url: `${SERVICES.MEDIA}/media/upload`,
+        data: form,
+        headers: {
+          ...form.getHeaders(),
+          authorization: req.headers.authorization,
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
 
-    res.status(201).json(data);
+      res.status(201).json(data);
+    } finally {
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    }
   }),
 );
 
@@ -95,26 +113,42 @@ router.patch(
   authMiddleware,
   upload.single("photo"),
   asyncHandler(async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Photo file is required",
+      });
+    }
+
     const form = new FormData();
     form.append(
       "photo",
       fs.createReadStream(req.file.path),
-      req.file.originalname,
+      {
+        filename: req.file.originalname || req.file.filename || "upload.jpg",
+        contentType: req.file.mimetype || "image/jpeg",
+      },
     );
 
-    const data = await forwardRequest({
-      method: "patch",
-      url: `${SERVICES.MEDIA}/media/${req.params.photoId}/retake`,
-      data: form,
-      headers: {
-        ...form.getHeaders(),
-        authorization: req.headers.authorization,
-      },
-      maxBodyLength: Infinity,
-      maxContentLength: Infinity,
-    });
+    try {
+      const data = await forwardRequest({
+        method: "patch",
+        url: `${SERVICES.MEDIA}/media/${req.params.photoId}/retake`,
+        data: form,
+        headers: {
+          ...form.getHeaders(),
+          authorization: req.headers.authorization,
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
 
-    res.status(200).json(data);
+      res.status(200).json(data);
+    } finally {
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    }
   }),
 );
 

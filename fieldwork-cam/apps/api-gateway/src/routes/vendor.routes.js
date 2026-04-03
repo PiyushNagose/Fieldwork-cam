@@ -46,7 +46,10 @@ router.put(
     const data = await forwardRequest({
       method: "put",
       url: `${SERVICES.USER}/vendors/me/profile`,
-      data: req.body,
+      data: {
+        ...req.body,
+        publicBaseUrl: `${req.protocol}://${req.get("host")}/api`,
+      },
       headers: {
         authorization: req.headers.authorization,
       },

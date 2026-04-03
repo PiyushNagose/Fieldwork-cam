@@ -194,6 +194,15 @@ export default function VendorSupportPage() {
     try {
       setSubmitting(true);
       setFormError("");
+
+      if (!form.title.trim()) {
+        throw new Error("Subject is required");
+      }
+
+      if (!form.description.trim()) {
+        throw new Error("Description is required");
+      }
+
       await createTicketApi(form);
       setOpenNewTicket(false);
       setForm({
@@ -204,7 +213,9 @@ export default function VendorSupportPage() {
       });
       await fetchTickets();
     } catch (err) {
+      const backendErrors = err?.response?.data?.errors;
       setFormError(
+        (Array.isArray(backendErrors) && backendErrors[0]?.msg) ||
         err?.response?.data?.message ||
           err?.response?.data?.error ||
           err?.message ||

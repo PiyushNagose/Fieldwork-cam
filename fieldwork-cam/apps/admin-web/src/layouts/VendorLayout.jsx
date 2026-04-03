@@ -58,6 +58,8 @@ export default function VendorLayout() {
 
   const displayName = user?.fullName || user?.email || user?.phone || "Vendor";
   const subtitleName = user?.fullName?.split(" ")?.[0] || "there";
+  const roleSubtitle =
+    user?.jobTitle || (user?.role === "VENDOR_OWNER" ? "Vendor" : "Account");
 
   const avatarLetter = (user?.fullName || user?.email || "V")
     .charAt(0)
@@ -175,7 +177,7 @@ export default function VendorLayout() {
                   {displayName}
                 </Typography>
                 <Typography sx={{ fontSize: 10.5, color: "#B0B5BE", fontWeight: 500 }}>
-                  Vendor Partner
+                  {roleSubtitle}
                 </Typography>
               </Box>
             </Stack>

@@ -95,7 +95,7 @@ const verifyOnePhoto = async (photo) => {
 
 const patchMediaPhoto = async (photoId, payload, authHeader) => {
   await axios.patch(
-    `${env.MEDIA_SERVICE_URL}/internal/media/${photoId}/ai-result`,
+    `${env.MEDIA_SERVICE_URL}/media/internal/media/${photoId}/ai-result`,
     payload,
     {
       headers: {
@@ -107,7 +107,7 @@ const patchMediaPhoto = async (photoId, payload, authHeader) => {
 
 const verifyPhotoService = async (photoId, authHeader) => {
   const res = await axios.get(
-    `${env.MEDIA_SERVICE_URL}/internal/media/${photoId}`,
+    `${env.MEDIA_SERVICE_URL}/media/internal/media/${photoId}`,
     {
       headers: {
         authorization: authHeader,
@@ -177,7 +177,36 @@ const verifyProjectPhotosService = async (projectId, authHeader) => {
   };
 };
 
+const verifyPhotoBatchService = async (photoIds = [], authHeader) => {
+  const ids = Array.isArray(photoIds)
+    ? photoIds.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+
+  const results = [];
+
+  for (const photoId of ids) {
+    const result = await verifyPhotoService(photoId, authHeader);
+    results.push(result);
+  }
+
+  const averageScore = results.length
+    ? Math.round(
+        results.reduce((acc, item) => acc + item.score, 0) / results.length,
+      )
+    : 0;
+
+  return {
+    totalPhotos: results.length,
+    passedPhotos: results.filter((x) => x.passed).length,
+    failedPhotos: results.filter((x) => !x.passed).length,
+    averageScore,
+    allPassed: results.every((x) => x.passed),
+    results,
+  };
+};
+
 module.exports = {
   verifyPhotoService,
   verifyProjectPhotosService,
+  verifyPhotoBatchService,
 };

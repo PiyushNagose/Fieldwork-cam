@@ -1,11 +1,12 @@
 const amqp = require("amqplib");
 const env = require("./env");
+const { EXCHANGES } = require("shared-events");
 
 let connection = null;
 let channel = null;
 let reconnecting = false;
 
-const EXCHANGE = "fieldwork_events";
+const EXCHANGE = EXCHANGES.FIELDWORK_EVENTS;
 
 const connectRabbitMQ = async () => {
   try {

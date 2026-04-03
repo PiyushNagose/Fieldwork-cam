@@ -32,14 +32,17 @@ const generateReportForProject = async (
   authHeader,
   vendorAuthUserId,
 ) => {
-  const photosRes = await axios.get(
-    `${env.MEDIA_SERVICE_URL}/media/project/${projectId}`,
-    {
+  const [photosRes, projectRes] = await Promise.all([
+    axios.get(`${env.MEDIA_SERVICE_URL}/media/project/${projectId}`, {
       headers: { authorization: authHeader },
-    },
-  );
+    }),
+    axios.get(`${env.PROJECT_SERVICE_URL}/projects/${projectId}`, {
+      headers: { authorization: authHeader },
+    }),
+  ]);
 
   const photos = photosRes.data?.data || [];
+  const project = projectRes.data?.data || projectRes.data || {};
   const categories = buildCategoryMap(photos);
 
   const avgAiScore = photos.length
@@ -49,21 +52,39 @@ const generateReportForProject = async (
       )
     : 0;
 
+  const timestamps = photos
+    .map((item) => new Date(item.timestampCaptured || item.createdAt || 0).getTime())
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b);
+  const durationMinutes =
+    timestamps.length >= 2 ? Math.max(1, Math.round((timestamps[timestamps.length - 1] - timestamps[0]) / 60000)) : 0;
+  const timeOnSite = durationMinutes
+    ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
+    : "Not available";
+
+  const normalizedStatus = ["Approved", "Completed"].includes(project.status)
+    ? "Completed"
+    : project.status === "Submitted"
+      ? "In Review"
+      : project.status === "Retake Requested"
+        ? "Pending"
+        : "Draft";
+
   const report = await upsertReportByProjectId(projectId, {
     projectId,
-    workOrderNumber: photos[0]?.workOrderNumber || `WO-${projectId}`,
-    title: "Project Report",
-    address: "Project Address",
+    workOrderNumber: project.workOrderNumber || photos[0]?.workOrderNumber || `WO-${projectId}`,
+    title: project.serviceType ? `${project.serviceType} Report` : "Project Report",
+    address: project.address || "",
     vendorAuthUserId,
-    status: "Completed",
-    progress: 100,
+    status: normalizedStatus,
+    progress: Number(project.progress || (photos.length ? Math.min(100, categories.length * 12) : 0)),
     summary: {
       totalCategories: categories.length,
       aiQualityScore: avgAiScore,
       gpsStatus: photos.every((p) => p.gpsLatitude && p.gpsLongitude)
         ? "Confirmed"
         : "Partial",
-      timeOnSite: "1h 32m",
+      timeOnSite,
     },
     categories,
   });

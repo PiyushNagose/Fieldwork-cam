@@ -15,6 +15,16 @@ export const getProjectByIdApi = async (projectId) => {
   return response.data;
 };
 
+export const updateProjectApi = async (projectId, payload) => {
+  const response = await apiClient.put(`/projects/${projectId}`, payload);
+  return response.data;
+};
+
+export const deleteProjectApi = async (projectId) => {
+  const response = await apiClient.delete(`/projects/${projectId}`);
+  return response.data;
+};
+
 export const getProjectNotesApi = async (projectId) => {
   const response = await apiClient.get(`/projects/${projectId}/notes`);
   return response.data;

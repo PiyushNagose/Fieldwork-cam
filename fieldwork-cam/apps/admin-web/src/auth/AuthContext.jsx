@@ -1,5 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { apiClient } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -18,6 +25,7 @@ export function AuthProvider({ children }) {
     const raw = localStorage.getItem("auth_user");
     return raw ? normalizeUser(JSON.parse(raw)) : null;
   });
+  const [initializing, setInitializing] = useState(true);
 
   const login = (authData) => {
     const nextToken = authData?.token || "";
@@ -38,15 +46,61 @@ export function AuthProvider({ children }) {
     window.location.href = "/login";
   };
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setToken("");
+      setUser(null);
+      setInitializing(false);
+
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    };
+
+    window.addEventListener("fieldwork:unauthorized", handleUnauthorized);
+    return () => {
+      window.removeEventListener("fieldwork:unauthorized", handleUnauthorized);
+    };
+  }, []);
+
+  useEffect(() => {
+    const validateSession = async () => {
+      if (!token) {
+        setInitializing(false);
+        return;
+      }
+
+      try {
+        const role = String(user?.role || "").toUpperCase();
+
+        if (role === "VENDOR_OWNER") {
+          await apiClient.get("/vendors/me/profile");
+        } else {
+          await apiClient.get("/users/profile");
+        }
+      } catch {
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        setToken("");
+        setUser(null);
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    validateSession();
+  }, [token, user?.role]);
+
   const value = useMemo(
     () => ({
       token,
       user,
+      initializing,
       isAuthenticated: !!token,
       login,
       logout,
     }),
-    [token, user],
+    [initializing, token, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

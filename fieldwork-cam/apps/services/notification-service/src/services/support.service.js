@@ -4,6 +4,7 @@ const {
   findAllTickets,
   findLatestTicket,
 } = require("../repositories/ticket.repository");
+const env = require("../config/env");
 
 const normalizeStatus = (value = "") => {
   const status = String(value || "").toUpperCase();
@@ -62,11 +63,44 @@ const formatTicket = (ticket) => ({
   updatedAt: ticket.updatedAt,
 });
 
-const createSupportTicket = async (vendorAuthUserId, payload) => {
+const resolveSupportOwnerAuthUserId = async (user, authHeader) => {
+  if (user?.role === "ADMIN") {
+    return user.userId;
+  }
+
+  if (user?.role === "STAFF") {
+    const response = await fetch(`${env.USER_SERVICE_URL}/users/profile`, {
+      headers: {
+        authorization: authHeader || "",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to resolve staff support owner");
+    }
+
+    const data = await response.json();
+    const profile = data?.data || data || {};
+    const vendorAuthUserId = profile?.staffProfile?.vendorAuthUserId || "";
+
+    if (!vendorAuthUserId) {
+      throw new Error("Staff vendor owner not found");
+    }
+
+    return vendorAuthUserId;
+  }
+
+  return user?.userId || "";
+};
+
+const createSupportTicket = async (user, authHeader, payload) => {
+  const normalizedTitle = String(payload.title || payload.subject || "").trim();
+  const vendorAuthUserId = await resolveSupportOwnerAuthUserId(user, authHeader);
+
   const ticket = await createTicket({
     ticketId: await buildTicketId(),
     vendorAuthUserId,
-    title: payload.title,
+    title: normalizedTitle,
     description: payload.description,
     category: normalizeCategory(payload.category),
     priority: String(payload.priority || "MEDIUM").toUpperCase(),
@@ -76,15 +110,18 @@ const createSupportTicket = async (vendorAuthUserId, payload) => {
   return formatTicket(ticket);
 };
 
-const getTickets = async (user, query = {}) => {
-  const { userId, role } = user;
+const getTickets = async (user, query = {}, authHeader) => {
+  const { role } = user;
   const { status } = query;
   const normalizedStatus =
     status && status !== "ALL" ? normalizeStatus(status) : undefined;
   const tickets =
     role === "ADMIN"
       ? await findAllTickets(normalizedStatus)
-      : await findTicketsByVendor(userId, normalizedStatus);
+      : await findTicketsByVendor(
+          await resolveSupportOwnerAuthUserId(user, authHeader),
+          normalizedStatus,
+        );
 
   return tickets.map(formatTicket);
 };

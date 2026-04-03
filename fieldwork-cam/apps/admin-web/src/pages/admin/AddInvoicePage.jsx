@@ -26,6 +26,7 @@ const formatCurrency = (value = 0) =>
   })}`;
 
 const generateInvoiceNumber = () => `INV-${Date.now()}`;
+const BILLABLE_PROJECT_STATUSES = ["Approved", "Completed"];
 
 export default function AddInvoicePage() {
   const navigate = useNavigate();
@@ -87,9 +88,13 @@ export default function AddInvoicePage() {
   );
 
   const filteredProjects = useMemo(() => {
-    if (!form.vendorAuthUserId) return projects;
+    const billable = projects.filter((project) =>
+      BILLABLE_PROJECT_STATUSES.includes(project.status),
+    );
 
-    return projects.filter(
+    if (!form.vendorAuthUserId) return billable;
+
+    return billable.filter(
       (project) => project.assignedVendorAuthUserId === form.vendorAuthUserId,
     );
   }, [form.vendorAuthUserId, projects]);
@@ -297,6 +302,12 @@ export default function AddInvoicePage() {
                 </MenuItem>
               ))}
             </TextField>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Typography sx={{ fontSize: 11.5, color: "#A39D96", fontWeight: 500 }}>
+              Only approved or completed projects are available for invoice creation.
+            </Typography>
           </Grid>
 
           <Grid item xs={12}>

@@ -9,8 +9,9 @@ const getInvoices = asyncHandler(async (req, res) => {
 
 const createInvoice = asyncHandler(async (req, res) => {
   const invoice = await invoiceService.createInvoiceService(
-    req.user.userId,
+    req.user,
     req.body,
+    req.headers.authorization,
   );
   return successResponse(res, invoice, "Invoice created successfully", 201);
 });

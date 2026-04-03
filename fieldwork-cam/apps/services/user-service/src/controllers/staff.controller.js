@@ -66,6 +66,23 @@ const assignProject = asyncHandler(async (req, res) => {
   return successResponse(res, data, "Project assigned successfully", 200);
 });
 
+const updateStaff = asyncHandler(async (req, res) => {
+  const vendorAuthUserId = req.user.userId;
+  const staffAuthUserId = req.params.id;
+
+  if (!staffAuthUserId) {
+    throw new ApiError("Staff ID is required", 400);
+  }
+
+  const data = await staffService.updateStaff(
+    vendorAuthUserId,
+    staffAuthUserId,
+    req.body,
+  );
+
+  return successResponse(res, data, "Staff updated successfully", 200);
+});
+
 // 🔷 UPDATE STATUS (NEW)
 const updateStatus = asyncHandler(async (req, res) => {
   const vendorAuthUserId = req.user.userId;
@@ -94,11 +111,26 @@ const getStaffStats = asyncHandler(async (req, res) => {
   return successResponse(res, data, "Staff stats fetched successfully", 200);
 });
 
+const removeStaff = asyncHandler(async (req, res) => {
+  const vendorAuthUserId = req.user.userId;
+  const staffAuthUserId = req.params.id;
+
+  if (!staffAuthUserId) {
+    throw new ApiError("Staff ID is required", 400);
+  }
+
+  const data = await staffService.removeStaff(vendorAuthUserId, staffAuthUserId);
+
+  return successResponse(res, data, "Staff removed successfully", 200);
+});
+
 module.exports = {
   createStaff,
   getTeam,
   getStaffDetails,
   assignProject,
+  updateStaff,
   updateStatus, // NEW
+  removeStaff,
   getStaffStats, // NEW
 };

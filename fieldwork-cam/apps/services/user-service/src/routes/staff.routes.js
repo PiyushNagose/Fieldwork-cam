@@ -5,6 +5,7 @@ const staffController = require("../controllers/staff.controller");
 const {
   createStaffValidator,
   assignProjectValidator,
+  updateStaffValidator,
   updateStatusValidator,
 } = require("../validators/staff.validator");
 
@@ -45,5 +46,15 @@ router.patch(
   validateMiddleware,
   staffController.updateStatus,
 );
+
+router.patch(
+  "/:id",
+  authMiddleware,
+  updateStaffValidator,
+  validateMiddleware,
+  staffController.updateStaff,
+);
+
+router.delete("/:id", authMiddleware, staffController.removeStaff);
 
 module.exports = router;

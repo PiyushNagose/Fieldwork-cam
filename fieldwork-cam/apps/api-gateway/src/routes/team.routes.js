@@ -1,4 +1,5 @@
 const express = require("express");
+const env = require("../config/env");
 const { SERVICES } = require("../config/services");
 const { forwardRequest } = require("../services/proxy.service");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -30,7 +31,10 @@ router.post(
     const data = await forwardRequest({
       method: "post",
       url: `${SERVICES.USER}/team/add`,
-      data: req.body,
+      data: {
+        ...req.body,
+        inviteBaseUrl: req.headers.origin || env.APP_WEB_URL,
+      },
       headers: { authorization: req.headers.authorization },
     });
 
@@ -78,6 +82,35 @@ router.patch(
       method: "patch",
       url: `${SERVICES.USER}/team/${req.params.id}/status`,
       data: req.body,
+      headers: { authorization: req.headers.authorization },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
+router.patch(
+  "/:id",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "patch",
+      url: `${SERVICES.USER}/team/${req.params.id}`,
+      data: req.body,
+      headers: { authorization: req.headers.authorization },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "delete",
+      url: `${SERVICES.USER}/team/${req.params.id}`,
       headers: { authorization: req.headers.authorization },
     });
 

@@ -4,6 +4,7 @@ const controller = require("../controllers/notification.controller");
 
 const router = express.Router();
 
+router.post("/internal", controller.createInternal);
 router.get("/", authMiddleware, controller.getNotifications);
 router.patch("/:id/read", authMiddleware, controller.markRead);
 router.patch("/read-all", authMiddleware, controller.markAllRead);
