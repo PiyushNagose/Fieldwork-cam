@@ -4,7 +4,7 @@ const submissionService = require("../services/submission.service");
 
 const createSubmission = asyncHandler(async (req, res) => {
   const data = await submissionService.createSubmissionService(
-    req.user.userId,
+    req.user,
     req.body,
     req.headers.authorization
   );

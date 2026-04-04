@@ -58,7 +58,9 @@ const updateProjectStatus = async (projectId, status, authHeader) => {
 
 const SUBMITTABLE_PROJECT_STATUSES = ["New", "In Progress", "Retake Requested"];
 
-const createSubmissionService = async (authUserId, payload, authHeader) => {
+const createSubmissionService = async (authUser, payload, authHeader) => {
+  const authUserId = authUser?.userId || "";
+  const authRole = String(authUser?.role || "").toUpperCase();
   const existing = await findSubmissionByProjectId(payload.projectId);
   if (existing && existing.status !== "Retake Requested") {
     throw new ApiError("Submission already exists for this project", 409);
@@ -68,6 +70,10 @@ const createSubmissionService = async (authUserId, payload, authHeader) => {
 
   if (!project) {
     throw new ApiError("Project not found", 404);
+  }
+
+  if (authRole !== "VENDOR_OWNER") {
+    throw new ApiError("Only vendors can submit the project", 403);
   }
 
   if (
@@ -139,13 +145,27 @@ const createSubmissionService = async (authUserId, payload, authHeader) => {
       userId: authUserId,
       type: "PROJECT",
       title: "Submission created",
-          message: `Submission created for ${project.title || "project"}`,
+      message: `Submission created for ${project.title || "project"}`,
+      meta: {
+        projectId: payload.projectId,
+        submissionId: String(submission._id),
+        workOrderNumber: project.workOrderNumber || "",
+      },
+    },
+    project.assignedVendorAuthUserId &&
+    project.assignedVendorAuthUserId !== authUserId
+      ? {
+          userId: project.assignedVendorAuthUserId,
+          type: "PROJECT",
+          title: "Project submission received",
+          message: `A submission was created for ${project.title || "project"}`,
           meta: {
             projectId: payload.projectId,
             submissionId: String(submission._id),
             workOrderNumber: project.workOrderNumber || "",
           },
-        },
+        }
+      : null,
       ]);
 
   return submission;
