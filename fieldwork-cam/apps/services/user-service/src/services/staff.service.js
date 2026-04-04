@@ -245,6 +245,26 @@ const assignProjectToStaff = async (
   return formatStaff(updated);
 };
 
+const unassignProjectFromStaff = async (
+  vendorAuthUserId,
+  staffAuthUserId,
+  projectId,
+) => {
+  const staff = await resolveStaffForVendor(vendorAuthUserId, staffAuthUserId);
+
+  const currentIds = Array.isArray(staff.assignedProjectIds)
+    ? staff.assignedProjectIds
+    : [];
+  const nextIds = currentIds.filter((item) => item !== projectId);
+
+  const updated = await updateStaffProfileById(staff._id, {
+    assignedProjectIds: nextIds,
+    lastActiveAt: new Date(),
+  });
+
+  return formatStaff(updated);
+};
+
 const updateStaffStatus = async (vendorAuthUserId, staffAuthUserId, status) => {
   const staff = await resolveStaffForVendor(vendorAuthUserId, staffAuthUserId);
 
@@ -334,6 +354,7 @@ module.exports = {
   getVendorTeam,
   getStaffDetails,
   assignProjectToStaff,
+  unassignProjectFromStaff,
   updateStaff,
   updateStaffStatus,
   removeStaff,

@@ -37,6 +37,7 @@ export default function VendorProjectsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [assignProject, setAssignProject] = useState(null);
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     const fetchProjectsPageData = async () => {
@@ -231,6 +232,16 @@ export default function VendorProjectsPage() {
         </Alert>
       ) : null}
 
+      {success ? (
+        <Alert
+          severity="success"
+          onClose={() => setSuccess("")}
+          sx={{ mt: 1.5, borderRadius: 1 }}
+        >
+          {success}
+        </Alert>
+      ) : null}
+
       <Box
         sx={{
           mt: 1.5,
@@ -275,7 +286,7 @@ export default function VendorProjectsPage() {
         project={assignProject}
         staff={staff}
         onClose={() => setAssignProject(null)}
-        onSuccess={async () => {
+        onSuccess={async (message) => {
           try {
             setLoading(true);
             const [projectsRes, staffRes] = await Promise.all([
@@ -290,6 +301,7 @@ export default function VendorProjectsPage() {
               ),
             );
             setStaff(Array.isArray(allStaff) ? allStaff : []);
+            setSuccess(message || "Staff assigned successfully.");
           } finally {
             setLoading(false);
           }

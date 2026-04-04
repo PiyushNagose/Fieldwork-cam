@@ -30,6 +30,7 @@ import { getVendorsApi } from "../../api/vendor.api";
 import { getInvoicesApi } from "../../api/invoice.api";
 import { getTicketsApi } from "../../api/support.api";
 import EditProfileDialog from "./EditProfileDialog";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const formatRelativeTime = (value) => {
   if (!value) return "";
@@ -122,8 +123,10 @@ export default function ProfilePage() {
   const status = user?.status || "";
   const role = user?.role || "";
   const jobTitle = user?.jobTitle || meta?.jobTitle || "";
-  const avatarUrl = user?.profilePhotoUrl || meta?.profilePhotoUrl || "";
-  const bannerImageUrl = user?.bannerImageUrl || meta?.bannerImageUrl || "";
+  const avatarUrl = resolveMediaUrl(user?.profilePhotoUrl || meta?.profilePhotoUrl || "");
+  const bannerImageUrl = resolveMediaUrl(
+    user?.bannerImageUrl || meta?.bannerImageUrl || "",
+  );
 
   const stats = useMemo(() => {
     const totalProjects = projects.length;
@@ -587,7 +590,16 @@ export default function ProfilePage() {
         open={openEdit}
         onClose={() => setOpenEdit(false)}
         profile={profile}
-        onSaved={() => fetchProfile()}
+        onSaved={(updatedProfile) => {
+          if (updatedProfile) {
+            setProfile((current) => ({
+              ...(current || {}),
+              ...updatedProfile,
+            }));
+          }
+
+          fetchProfile();
+        }}
       />
     </Box>
   );

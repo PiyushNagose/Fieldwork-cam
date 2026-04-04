@@ -39,6 +39,14 @@ const generateWorkOrderNumber = () => {
   return `PRJ-${year}${month}${day}-${random}`;
 };
 
+const buildMapPreviewUrl = (address = "") => {
+  const query = String(address || "").trim();
+
+  if (!query) return "";
+
+  return `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=14&output=embed`;
+};
+
 export default function CreateProjectPage() {
   const navigate = useNavigate();
   const { projectId } = useParams();
@@ -64,6 +72,11 @@ export default function CreateProjectPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [initialWorkOrderNumber, setInitialWorkOrderNumber] = useState("");
+
+  const mapPreviewUrl = useMemo(
+    () => buildMapPreviewUrl(form.address),
+    [form.address],
+  );
 
   useEffect(() => {
     const fetchDependencies = async () => {
@@ -458,10 +471,63 @@ export default function CreateProjectPage() {
 
             <Grid item xs={12}>
               <Box sx={mapPreviewSx}>
-                <LocationOnOutlined sx={{ fontSize: 20, color: "#D0C4BB" }} />
-                <Typography sx={{ mt: 0.6, fontSize: 11.5, color: "#BBB1A9", fontWeight: 500 }}>
-                  Interactive map preview for selected location
-                </Typography>
+                {mapPreviewUrl ? (
+                  <>
+                    <Box
+                      component="iframe"
+                      title="Selected project location"
+                      src={mapPreviewUrl}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      sx={{
+                        width: "100%",
+                        height: 230,
+                        border: 0,
+                        display: "block",
+                      }}
+                    />
+                    <Box
+                      sx={{
+                        px: 1.5,
+                        py: 1.1,
+                        borderTop: "1px solid #E9E1DB",
+                        bgcolor: "#FCFAF8",
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 11.5,
+                          color: "#8F8A84",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Map preview for: {form.address.trim()}
+                      </Typography>
+                    </Box>
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      minHeight: 108,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <LocationOnOutlined sx={{ fontSize: 20, color: "#D0C4BB" }} />
+                    <Typography
+                      sx={{
+                        mt: 0.6,
+                        fontSize: 11.5,
+                        color: "#BBB1A9",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Enter a location to preview it on the map
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Grid>
           </Grid>

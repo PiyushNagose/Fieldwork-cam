@@ -11,13 +11,10 @@ const {
 
 const router = express.Router();
 
-// 🔷 GET ALL STAFF (with filter + search)
 router.get("/", authMiddleware, staffController.getTeam);
 
-// 🔷 STATS (for top cards)
 router.get("/stats", authMiddleware, staffController.getStaffStats);
 
-// 🔷 CREATE STAFF
 router.post(
   "/add",
   authMiddleware,
@@ -26,10 +23,8 @@ router.post(
   staffController.createStaff,
 );
 
-// 🔷 GET SINGLE STAFF
 router.get("/:id", authMiddleware, staffController.getStaffDetails);
 
-// 🔷 ASSIGN PROJECT
 router.post(
   "/:id/assign-project",
   authMiddleware,
@@ -38,7 +33,12 @@ router.post(
   staffController.assignProject,
 );
 
-// 🔷 UPDATE STATUS (IMPORTANT)
+router.delete(
+  "/:id/assign-project/:projectId",
+  authMiddleware,
+  staffController.unassignProject,
+);
+
 router.patch(
   "/:id/status",
   authMiddleware,

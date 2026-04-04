@@ -65,6 +65,12 @@ router.post(
   projectController.assignStaff,
 );
 
+router.delete(
+  "/:projectId/assign-staff/:staffId",
+  authMiddleware,
+  projectController.unassignStaff,
+);
+
 router.patch(
   "/:projectId/status",
   authMiddleware,

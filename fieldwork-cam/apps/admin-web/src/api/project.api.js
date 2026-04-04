@@ -46,3 +46,10 @@ export const assignStaffToProjectApi = async (projectId, staffId) => {
   });
   return response.data;
 };
+
+export const removeStaffFromProjectApi = async (projectId, staffId) => {
+  const response = await apiClient.delete(
+    `/projects/${projectId}/assign-staff/${staffId}`,
+  );
+  return response.data;
+};

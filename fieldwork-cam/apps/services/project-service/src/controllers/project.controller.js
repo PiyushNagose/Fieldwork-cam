@@ -64,6 +64,15 @@ const assignStaff = asyncHandler(async (req, res) => {
   return successResponse(res, project, "Staff assigned successfully", 200);
 });
 
+const unassignStaff = asyncHandler(async (req, res) => {
+  const project = await projectService.unassignStaff(
+    req.params.projectId,
+    req.params.staffId,
+    req.user,
+  );
+  return successResponse(res, project, "Staff removed successfully", 200);
+});
+
 const updateProjectStatus = asyncHandler(async (req, res) => {
   const project = await projectService.updateProjectStatus(
     req.params.projectId,
@@ -87,6 +96,7 @@ module.exports = {
   addProjectNote,
   assignVendor,
   assignStaff,
+  unassignStaff,
   updateProjectStatus,
   deleteProject,
 };

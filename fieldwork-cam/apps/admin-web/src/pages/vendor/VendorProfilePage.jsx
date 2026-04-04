@@ -31,6 +31,7 @@ import { getTicketsApi } from "../../api/support.api";
 import { getStaffApi } from "../../api/staff.api";
 import { getNotificationsApi } from "../../api/notification.api";
 import VendorEditProfileDialog from "./VendorEditProfileDialog";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const statCards = [
   {
@@ -256,8 +257,10 @@ export default function VendorProfilePage() {
   const website = meta?.website || "";
   const serviceTypes = meta?.serviceTypes || [];
   const joinedAt = meta?.memberSince || user?.createdAt;
-  const avatarUrl = user?.profilePhotoUrl || meta?.profilePhotoUrl || "";
-  const bannerImageUrl = user?.bannerImageUrl || meta?.bannerImageUrl || "";
+  const avatarUrl = resolveMediaUrl(user?.profilePhotoUrl || meta?.profilePhotoUrl || "");
+  const bannerImageUrl = resolveMediaUrl(
+    user?.bannerImageUrl || meta?.bannerImageUrl || "",
+  );
   const isActive = String(user?.status || "").toUpperCase() === "ACTIVE";
 
   if (loading) {
@@ -574,7 +577,13 @@ export default function VendorProfilePage() {
         open={openEdit}
         onClose={() => setOpenEdit(false)}
         profile={profile}
-        onSaved={fetchProfile}
+        onSaved={(updatedProfile) => {
+          if (updatedProfile) {
+            setProfile(updatedProfile);
+          }
+
+          fetchProfile();
+        }}
       />
     </Box>
   );

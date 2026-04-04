@@ -27,6 +27,7 @@ import {
   ImageOutlined,
 } from "@mui/icons-material";
 import { updateAdminProfileApi } from "../../api/admin.api";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const DEPARTMENTS = [
   "Field Operations",
@@ -80,8 +81,12 @@ export default function EditProfileDialog({ open, onClose, profile, onSaved }) {
       jobTitle: user?.jobTitle || meta?.jobTitle || "",
       department: user?.department || meta?.department || "",
       bio: user?.bio || meta?.bio || "",
-      profilePhotoUrl: user?.profilePhotoUrl || meta?.profilePhotoUrl || "",
-      bannerImageUrl: user?.bannerImageUrl || meta?.bannerImageUrl || "",
+      profilePhotoUrl: resolveMediaUrl(
+        user?.profilePhotoUrl || meta?.profilePhotoUrl || "",
+      ),
+      bannerImageUrl: resolveMediaUrl(
+        user?.bannerImageUrl || meta?.bannerImageUrl || "",
+      ),
     });
   }, [profile, open]);
 

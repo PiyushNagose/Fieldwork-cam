@@ -26,6 +26,7 @@ import {
   requestRetakeSubmissionApi,
   reviewSubmissionApi,
 } from "../../api/submission.api";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -123,9 +124,14 @@ export default function SubmissionReviewPage() {
     const selectedIds = new Set((submission?.photoIds || []).map(String));
     const availablePhotos = Array.isArray(photos) ? photos : [];
 
-    if (!selectedIds.size) return availablePhotos;
+    const normalizedPhotos = availablePhotos.map((photo) => ({
+      ...photo,
+      fileUrl: resolveMediaUrl(photo?.fileUrl || ""),
+    }));
 
-    return availablePhotos.filter((photo) => selectedIds.has(String(photo._id)));
+    if (!selectedIds.size) return normalizedPhotos;
+
+    return normalizedPhotos.filter((photo) => selectedIds.has(String(photo._id)));
   }, [photos, submission]);
 
   const evidenceTiles = useMemo(() => {

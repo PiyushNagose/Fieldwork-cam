@@ -20,8 +20,14 @@ import {
   PersonAddAlt1Outlined,
   SearchOutlined,
 } from "@mui/icons-material";
-import { assignStaffToProjectApi } from "../../api/project.api";
-import { assignProjectToStaffApi } from "../../api/staff.api";
+import {
+  assignStaffToProjectApi,
+  removeStaffFromProjectApi,
+} from "../../api/project.api";
+import {
+  assignProjectToStaffApi,
+  removeProjectFromStaffApi,
+} from "../../api/staff.api";
 
 const STATUS_OPTIONS = ["ALL", "ACTIVE", "ON_LEAVE", "INACTIVE"];
 
@@ -38,7 +44,7 @@ export default function VendorAssignStaffDialog({
   const [error, setError] = useState("");
 
   const assignedIds = useMemo(
-    () => new Set((project?.assignedStaff || []).map((item) => item.staffId)),
+    () => new Set((project?.assignedStaff || []).map((item) => String(item.staffId))),
     [project],
   );
 
@@ -66,26 +72,42 @@ export default function VendorAssignStaffDialog({
     });
   }, [search, staff, statusFilter]);
 
-  const handleAssign = async (staffMember) => {
+  const handleToggleAssignment = async (staffMember) => {
     if (!project?._id || !staffMember?.authUserId) return;
+
+    const alreadyAssigned = assignedIds.has(String(staffMember.authUserId));
 
     try {
       setSubmitting(true);
       setError("");
 
-      await Promise.all([
-        assignStaffToProjectApi(project._id, staffMember.authUserId),
-        assignProjectToStaffApi(staffMember.authUserId, project._id),
-      ]);
+      if (alreadyAssigned) {
+        await Promise.all([
+          removeStaffFromProjectApi(project._id, staffMember.authUserId),
+          removeProjectFromStaffApi(staffMember.authUserId, project._id),
+        ]);
 
-      onSuccess?.();
+        onSuccess?.(
+          `${staffMember?.fullName || "Staff member"} removed from ${project?.title || project?.address || "project"}.`,
+        );
+      } else {
+        await Promise.all([
+          assignStaffToProjectApi(project._id, staffMember.authUserId),
+          assignProjectToStaffApi(staffMember.authUserId, project._id),
+        ]);
+
+        onSuccess?.(
+          `${staffMember?.fullName || "Staff member"} assigned to ${project?.title || project?.address || "project"}.`,
+        );
+      }
+
       onClose?.();
     } catch (err) {
       setError(
         err?.response?.data?.message ||
           err?.response?.data?.error ||
           err?.message ||
-          "Failed to assign staff",
+          `Failed to ${alreadyAssigned ? "remove" : "assign"} staff`,
       );
     } finally {
       setSubmitting(false);
@@ -225,7 +247,7 @@ export default function VendorAssignStaffDialog({
           <Stack spacing={1.5}>
             {filteredStaff.length ? (
               filteredStaff.map((item) => {
-                const alreadyAssigned = assignedIds.has(item.authUserId);
+                const alreadyAssigned = assignedIds.has(String(item.authUserId));
 
                 return (
                   <Box
@@ -323,25 +345,25 @@ export default function VendorAssignStaffDialog({
 
                       <Button
                         variant="outlined"
-                        disabled={alreadyAssigned || submitting}
-                        onClick={() => handleAssign(item)}
+                        disabled={submitting}
+                        onClick={() => handleToggleAssignment(item)}
                         sx={{
                           minWidth: 92,
                           minHeight: 32,
                           borderRadius: 1,
-                          borderColor: alreadyAssigned ? "#D1D5DB" : "#E9CFC2",
-                          bgcolor: alreadyAssigned ? "#F9FAFB" : "#FFFFFF",
-                          color: alreadyAssigned ? "#9CA3AF" : "#7C6258",
+                          borderColor: alreadyAssigned ? "#E9BDBD" : "#E9CFC2",
+                          bgcolor: alreadyAssigned ? "#FFF7F7" : "#FFFFFF",
+                          color: alreadyAssigned ? "#B45353" : "#7C6258",
                           fontSize: 12,
                           fontWeight: 700,
                           textTransform: "none",
                           "&:hover": {
-                            borderColor: alreadyAssigned ? "#D1D5DB" : "#DFC1B3",
-                            bgcolor: alreadyAssigned ? "#F9FAFB" : "#FCFAF8",
+                            borderColor: alreadyAssigned ? "#DB9D9D" : "#DFC1B3",
+                            bgcolor: alreadyAssigned ? "#FFF1F1" : "#FCFAF8",
                           },
                         }}
                       >
-                        {alreadyAssigned ? "Assigned" : "Assign"}
+                        {alreadyAssigned ? "Remove" : "Assign"}
                       </Button>
                     </Stack>
                   </Box>

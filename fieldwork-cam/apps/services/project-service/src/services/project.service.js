@@ -7,6 +7,7 @@ const {
   findAllProjects,
   assignVendorToProject,
   assignStaffToProject,
+  removeStaffFromProject,
   updateProjectById,
   deleteProjectById,
 } = require("../repositories/project.repository");
@@ -376,6 +377,34 @@ const assignStaff = async (projectId, staffId, authUser) => {
   return statusPromoted;
 };
 
+const unassignStaff = async (projectId, staffId, authUser) => {
+  const project = await findProjectById(projectId);
+
+  if (!project) {
+    throw new ApiError("Project not found", 404);
+  }
+
+  const updated = await removeStaffFromProject(projectId, staffId);
+
+  await sendNotifications([
+    authUser?.userId
+      ? {
+          userId: authUser.userId,
+          type: "STAFF",
+          title: "Staff removed",
+          message: `${project.title} had a staff assignment removed`,
+          meta: {
+            projectId: String(project._id),
+            projectCode: project.workOrderNumber,
+            staffId,
+          },
+        }
+      : null,
+  ]);
+
+  return updated;
+};
+
 const updateProjectStatus = async (projectId, status, authUser) => {
   const project = await findProjectById(projectId);
 
@@ -456,6 +485,7 @@ module.exports = {
   addProjectNote,
   assignVendor,
   assignStaff,
+  unassignStaff,
   getProjects,
   updateProjectStatus,
   removeProject,

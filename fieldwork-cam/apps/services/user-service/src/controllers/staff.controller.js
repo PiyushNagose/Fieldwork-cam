@@ -66,6 +66,24 @@ const assignProject = asyncHandler(async (req, res) => {
   return successResponse(res, data, "Project assigned successfully", 200);
 });
 
+const unassignProject = asyncHandler(async (req, res) => {
+  const vendorAuthUserId = req.user.userId;
+  const staffAuthUserId = req.params.id;
+  const { projectId } = req.params;
+
+  if (!staffAuthUserId || !projectId) {
+    throw new ApiError("Staff ID and projectId are required", 400);
+  }
+
+  const data = await staffService.unassignProjectFromStaff(
+    vendorAuthUserId,
+    staffAuthUserId,
+    projectId,
+  );
+
+  return successResponse(res, data, "Project removed successfully", 200);
+});
+
 const updateStaff = asyncHandler(async (req, res) => {
   const vendorAuthUserId = req.user.userId;
   const staffAuthUserId = req.params.id;
@@ -129,6 +147,7 @@ module.exports = {
   getTeam,
   getStaffDetails,
   assignProject,
+  unassignProject,
   updateStaff,
   updateStatus, // NEW
   removeStaff,

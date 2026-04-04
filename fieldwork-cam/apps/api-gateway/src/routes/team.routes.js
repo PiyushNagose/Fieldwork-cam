@@ -7,7 +7,6 @@ const authMiddleware = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
-// 🔷 GET TEAM (WITH QUERY SUPPORT)
 router.get(
   "/",
   authMiddleware,
@@ -15,7 +14,7 @@ router.get(
     const data = await forwardRequest({
       method: "get",
       url: `${SERVICES.USER}/team`,
-      params: req.query, // ✅ IMPORTANT
+      params: req.query,
       headers: { authorization: req.headers.authorization },
     });
 
@@ -23,7 +22,20 @@ router.get(
   }),
 );
 
-// 🔷 CREATE STAFF
+router.get(
+  "/stats",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "get",
+      url: `${SERVICES.USER}/team/stats`,
+      headers: { authorization: req.headers.authorization },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
 router.post(
   "/add",
   authMiddleware,
@@ -42,7 +54,6 @@ router.post(
   }),
 );
 
-// 🔷 GET STAFF DETAILS
 router.get(
   "/:id",
   authMiddleware,
@@ -57,7 +68,6 @@ router.get(
   }),
 );
 
-// 🔷 ASSIGN PROJECT
 router.post(
   "/:id/assign-project",
   authMiddleware,
@@ -73,7 +83,20 @@ router.post(
   }),
 );
 
-// 🔷 UPDATE STATUS (NEW)
+router.delete(
+  "/:id/assign-project/:projectId",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "delete",
+      url: `${SERVICES.USER}/team/${req.params.id}/assign-project/${req.params.projectId}`,
+      headers: { authorization: req.headers.authorization },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
 router.patch(
   "/:id/status",
   authMiddleware,
@@ -111,21 +134,6 @@ router.delete(
     const data = await forwardRequest({
       method: "delete",
       url: `${SERVICES.USER}/team/${req.params.id}`,
-      headers: { authorization: req.headers.authorization },
-    });
-
-    res.status(200).json(data);
-  }),
-);
-
-// 🔷 STAFF STATS (NEW)
-router.get(
-  "/stats",
-  authMiddleware,
-  asyncHandler(async (req, res) => {
-    const data = await forwardRequest({
-      method: "get",
-      url: `${SERVICES.USER}/team/stats`,
       headers: { authorization: req.headers.authorization },
     });
 

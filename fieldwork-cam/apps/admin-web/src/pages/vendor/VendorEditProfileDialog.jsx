@@ -29,6 +29,7 @@ import {
   ImageOutlined,
 } from "@mui/icons-material";
 import { updateVendorProfileApi } from "../../api/vendor.api";
+import { resolveMediaUrl } from "../../utils/mediaUrl";
 
 const DEPARTMENTS = [
   "Vendor Operations",
@@ -93,12 +94,12 @@ export default function VendorEditProfileDialog({
       jobTitle: profile?.user?.jobTitle || profile?.meta?.jobTitle || "",
       timezone: profile?.user?.timezone || profile?.meta?.timezone || "",
       bio: profile?.user?.bio || profile?.meta?.bio || "",
-      profilePhotoUrl:
+      profilePhotoUrl: resolveMediaUrl(
         profile?.user?.profilePhotoUrl || profile?.meta?.profilePhotoUrl || "",
-      bannerImageUrl:
-        profile?.user?.bannerImageUrl ||
-        profile?.meta?.bannerImageUrl ||
-        "",
+      ),
+      bannerImageUrl: resolveMediaUrl(
+        profile?.user?.bannerImageUrl || profile?.meta?.bannerImageUrl || "",
+      ),
       serviceTypesText: (profile?.meta?.serviceTypes || []).join(", "),
     });
 
@@ -193,8 +194,10 @@ export default function VendorEditProfileDialog({
         },
       };
 
-      await updateVendorProfileApi(payload);
-      onSaved?.();
+      const response = await updateVendorProfileApi(payload);
+      const data = response?.data || response;
+
+      onSaved?.(data);
       onClose?.();
     } catch (err) {
       setError(

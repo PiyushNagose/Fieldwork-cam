@@ -87,6 +87,19 @@ const assignStaffToProject = (projectId, staffId) =>
     { new: true },
   );
 
+const removeStaffFromProject = (projectId, staffId) =>
+  Project.findByIdAndUpdate(
+    projectId,
+    {
+      $pull: {
+        assignedStaff: {
+          staffId,
+        },
+      },
+    },
+    { new: true },
+  );
+
 module.exports = {
   createProject,
   findProjectsByVendor,
@@ -97,5 +110,6 @@ module.exports = {
   assignVendorToProject,
   findAllProjects,
   assignStaffToProject,
+  removeStaffFromProject,
   deleteProjectById,
 };

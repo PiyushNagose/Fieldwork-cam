@@ -126,11 +126,31 @@ router.post(
 
 router.post(
   "/:projectId/assign-staff",
+  authMiddleware,
   asyncHandler(async (req, res) => {
     const data = await forwardRequest({
       method: "post",
       url: `${SERVICES.PROJECT}/projects/${req.params.projectId}/assign-staff`,
       data: req.body,
+      headers: {
+        authorization: req.headers.authorization,
+      },
+    });
+
+    res.status(200).json(data);
+  }),
+);
+
+router.delete(
+  "/:projectId/assign-staff/:staffId",
+  authMiddleware,
+  asyncHandler(async (req, res) => {
+    const data = await forwardRequest({
+      method: "delete",
+      url: `${SERVICES.PROJECT}/projects/${req.params.projectId}/assign-staff/${req.params.staffId}`,
+      headers: {
+        authorization: req.headers.authorization,
+      },
     });
 
     res.status(200).json(data);

@@ -6,6 +6,15 @@ const authMiddleware = require("../middlewares/auth.middleware");
 
 const router = express.Router();
 
+const getPublicBaseUrl = (req) => {
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const protocol = forwardedProto || req.protocol;
+  const host = forwardedHost || req.get("host");
+
+  return `${protocol}://${host}/api`;
+};
+
 router.get(
   "/",
   authMiddleware,
@@ -48,7 +57,7 @@ router.put(
       url: `${SERVICES.USER}/vendors/me/profile`,
       data: {
         ...req.body,
-        publicBaseUrl: `${req.protocol}://${req.get("host")}/api`,
+        publicBaseUrl: getPublicBaseUrl(req),
       },
       headers: {
         authorization: req.headers.authorization,

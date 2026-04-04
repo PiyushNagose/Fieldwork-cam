@@ -340,7 +340,10 @@ export default function StaffPage() {
         open={assignOpen}
         onClose={() => setAssignOpen(false)}
         staff={selectedStaff}
-        onSuccess={fetchStaffData}
+        onSuccess={async (message) => {
+          await fetchStaffData();
+          setSuccess(message || "Projects assigned successfully.");
+        }}
       />
     </Box>
   );

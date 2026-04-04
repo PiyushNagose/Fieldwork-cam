@@ -22,11 +22,33 @@ import {
   LocationOnOutlined,
   SearchOutlined,
 } from "@mui/icons-material";
-import { assignStaffToProjectApi, getProjectsApi } from "../../api/project.api";
-import { assignProjectToStaffApi } from "../../api/staff.api";
+import {
+  assignStaffToProjectApi,
+  getProjectsApi,
+  removeStaffFromProjectApi,
+} from "../../api/project.api";
+import {
+  assignProjectToStaffApi,
+  removeProjectFromStaffApi,
+} from "../../api/staff.api";
 
 const STATUS_OPTIONS = ["ALL", "New", "In Progress", "Submitted", "Completed"];
 const PRIORITY_OPTIONS = ["ALL", "High", "Medium", "Low"];
+
+const getProjectAssignedIdsForStaff = (projects = [], staffAuthUserId = "") =>
+  projects
+    .filter((project) =>
+      Array.isArray(project?.assignedStaff)
+        ? project.assignedStaff.some(
+            (item) => String(item?.staffId || "") === String(staffAuthUserId || ""),
+          )
+        : false,
+    )
+    .map((project) => project._id)
+    .filter(Boolean);
+
+const getUniqueIds = (...groups) =>
+  [...new Set(groups.flat().filter(Boolean).map((item) => String(item)))];
 
 export default function AssignProjectModal({
   open,
@@ -50,7 +72,16 @@ export default function AssignProjectModal({
         setError("");
         const res = await getProjectsApi();
         const data = res?.data || res || [];
-        setProjects(Array.isArray(data) ? data : []);
+        const nextProjects = Array.isArray(data) ? data : [];
+        const projectAssignedIds = getProjectAssignedIdsForStaff(
+          nextProjects,
+          staff?.authUserId,
+        );
+
+        setProjects(nextProjects);
+        setSelected(
+          getUniqueIds(staff?.assignedProjectIds || [], projectAssignedIds),
+        );
       } catch (err) {
         setError(
           err?.response?.data?.message ||
@@ -59,16 +90,16 @@ export default function AssignProjectModal({
             "Failed to load projects",
         );
         setProjects([]);
+        setSelected(getUniqueIds(staff?.assignedProjectIds || []));
       } finally {
         setLoading(false);
       }
     };
 
     if (open) {
-      setSelected(Array.isArray(staff?.assignedProjectIds) ? staff.assignedProjectIds : []);
       fetchProjects();
     }
-  }, [open, staff?.assignedProjectIds]);
+  }, [open, staff?.assignedProjectIds, staff?.authUserId]);
 
   const filteredProjects = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -97,37 +128,99 @@ export default function AssignProjectModal({
     });
   }, [priorityFilter, projects, search, statusFilter]);
 
+  const projectAssignedIds = useMemo(
+    () => getProjectAssignedIdsForStaff(projects, staff?.authUserId),
+    [projects, staff?.authUserId],
+  );
+
+  const staffAssignedIds = useMemo(
+    () => getUniqueIds(staff?.assignedProjectIds || []),
+    [staff?.assignedProjectIds],
+  );
+
+  const currentAssignedIds = useMemo(
+    () => getUniqueIds(projectAssignedIds, staffAssignedIds),
+    [projectAssignedIds, staffAssignedIds],
+  );
+
   const toggleSelect = (id) => {
+    const normalizedId = String(id);
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+      prev.includes(normalizedId)
+        ? prev.filter((item) => item !== normalizedId)
+        : [...prev, normalizedId],
     );
   };
 
   const handleAssign = async () => {
-    if (!staff?.authUserId || !selected.length) return;
+    if (!staff?.authUserId) return;
 
     try {
       setSubmitting(true);
       setError("");
 
-      const current = new Set(staff?.assignedProjectIds || []);
-      const nextIds = selected.filter((item) => !current.has(item));
+      const projectCurrent = new Set(projectAssignedIds.map(String));
+      const staffCurrent = new Set(staffAssignedIds.map(String));
+      const next = new Set(selected.map(String));
+      const assignToProjectIds = [...next].filter((item) => !projectCurrent.has(item));
+      const assignToStaffIds = [...next].filter((item) => !staffCurrent.has(item));
+      const removeFromProjectIds = [...projectCurrent].filter((item) => !next.has(item));
+      const removeFromStaffIds = [...staffCurrent].filter((item) => !next.has(item));
 
-      for (const projectId of nextIds) {
-        await Promise.all([
-          assignProjectToStaffApi(staff.authUserId, projectId),
+      await Promise.all(
+        assignToProjectIds.map((projectId) =>
           assignStaffToProjectApi(projectId, staff.authUserId),
-        ]);
+        ),
+      );
+
+      await Promise.all(
+        assignToStaffIds.map((projectId) =>
+          assignProjectToStaffApi(staff.authUserId, projectId),
+        ),
+      );
+
+      await Promise.all(
+        removeFromProjectIds.map((projectId) =>
+          removeStaffFromProjectApi(projectId, staff.authUserId),
+        ),
+      );
+
+      await Promise.all(
+        removeFromStaffIds.map((projectId) =>
+          removeProjectFromStaffApi(staff.authUserId, projectId),
+        ),
+      );
+
+      const messages = [];
+      const addedCount = getUniqueIds(assignToProjectIds, assignToStaffIds).length;
+      const removedCount = getUniqueIds(
+        removeFromProjectIds,
+        removeFromStaffIds,
+      ).length;
+
+      if (addedCount) {
+        messages.push(
+          `${addedCount} project${addedCount === 1 ? "" : "s"} assigned`,
+        );
+      }
+      if (removedCount) {
+        messages.push(
+          `${removedCount} project${removedCount === 1 ? "" : "s"} removed`,
+        );
       }
 
-      onSuccess?.();
+      onSuccess?.(
+        messages.length
+          ? `${messages.join(" and ")} for ${staff?.fullName || "staff member"}.`
+          : "No assignment changes were made.",
+      );
       onClose?.();
     } catch (err) {
       setError(
         err?.response?.data?.message ||
           err?.response?.data?.error ||
           err?.message ||
-          "Failed to assign projects",
+          "Failed to update project assignments",
       );
     } finally {
       setSubmitting(false);
@@ -180,7 +273,7 @@ export default function AssignProjectModal({
                 sx={{ mt: 0.35, fontSize: 12.5, color: "#5F6368", fontWeight: 500 }}
               >
                 {staff?.roleTitle || "Lead Photographer"} • Currently assigned to{" "}
-                {staff?.assignedProjectIds?.length || 0} projects
+                {currentAssignedIds.length} projects
               </Typography>
             </Box>
           </Stack>
@@ -295,7 +388,7 @@ export default function AssignProjectModal({
               </Box>
             ) : filteredProjects.length ? (
               filteredProjects.map((project) => {
-                const checked = selected.includes(project._id);
+                const checked = selected.includes(String(project._id));
                 return (
                   <Box
                     key={project._id}
@@ -459,10 +552,10 @@ export default function AssignProjectModal({
             fullWidth
             variant="contained"
             onClick={handleAssign}
-            disabled={!selected.length || submitting}
+            disabled={submitting}
             sx={submitButtonSx}
           >
-            Assign {selected.length} Projects
+            Save Project Assignments
           </Button>
         </Stack>
       </DialogContent>
