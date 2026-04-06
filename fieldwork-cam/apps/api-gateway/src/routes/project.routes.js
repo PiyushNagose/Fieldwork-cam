@@ -7,6 +7,14 @@ const httpClient = require("../utils/httpClient");
 
 const router = express.Router();
 
+const getPublicApiBaseUrl = (req) => {
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  const forwardedHost = req.headers["x-forwarded-host"];
+  const protocol = forwardedProto || req.protocol;
+  const host = forwardedHost || req.get("host");
+  return `${protocol}://${host}/api`;
+};
+
 router.get(
   "/uploads/:folder/:fileName",
   asyncHandler(async (req, res) => {
@@ -67,7 +75,7 @@ router.post(
       url: `${SERVICES.PROJECT}/projects/create`,
       data: {
         ...req.body,
-        publicBaseUrl: `${req.protocol}://${req.get("host")}/api`,
+        publicBaseUrl: getPublicApiBaseUrl(req),
       },
       headers: {
         authorization: req.headers.authorization,
@@ -166,7 +174,7 @@ router.put(
       url: `${SERVICES.PROJECT}/projects/${req.params.projectId}`,
       data: {
         ...req.body,
-        publicBaseUrl: `${req.protocol}://${req.get("host")}/api`,
+        publicBaseUrl: getPublicApiBaseUrl(req),
       },
       headers: {
         authorization: req.headers.authorization,

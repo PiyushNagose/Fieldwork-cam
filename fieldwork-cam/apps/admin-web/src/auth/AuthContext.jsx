@@ -91,6 +91,11 @@ export function AuthProvider({ children }) {
     validateSession();
   }, [token, user?.role]);
 
+  useEffect(() => {
+    const role = String(user?.role || "").toUpperCase();
+    document.title = role === "VENDOR_OWNER" ? "Vendor Web" : "Admin Web";
+  }, [user?.role]);
+
   const value = useMemo(
     () => ({
       token,
