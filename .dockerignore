@@ -1,0 +1,9 @@
+.git
+.gitignore
+fieldwork-cam/.vscode
+fieldwork-cam/.run-logs
+fieldwork-cam/node_modules
+fieldwork-cam/apps/api-gateway/.env
+fieldwork-cam/apps/services/*/.env
+fieldwork-cam/apps/api-gateway/temp-uploads
+fieldwork-cam/apps/services/media-service/uploads

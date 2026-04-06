@@ -1,5 +1,6 @@
 const express = require("express");
 const multer = require("multer");
+const axios = require("axios");
 const { SERVICES } = require("../config/services");
 const { forwardRequest } = require("../services/proxy.service");
 const { asyncHandler } = require("../utils/asyncHandler");
@@ -9,6 +10,24 @@ const fs = require("fs");
 
 const router = express.Router();
 const upload = multer({ dest: "temp-uploads/" });
+
+router.get(
+  "/uploads/:fileName",
+  asyncHandler(async (req, res) => {
+    const response = await axios.get(
+      `${SERVICES.MEDIA}/uploads/${req.params.fileName}`,
+      {
+        responseType: "stream",
+      },
+    );
+
+    if (response.headers["content-type"]) {
+      res.setHeader("content-type", response.headers["content-type"]);
+    }
+
+    response.data.pipe(res);
+  }),
+);
 
 router.post(
   "/upload",

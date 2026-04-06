@@ -1,0 +1,18 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY fieldwork-cam ./fieldwork-cam
+COPY start-backend.sh ./start-backend.sh
+
+WORKDIR /app/fieldwork-cam
+
+RUN npm install --omit=dev --workspaces --include-workspace-root=false --no-audit --no-fund
+RUN mkdir -p apps/api-gateway/temp-uploads apps/services/media-service/uploads
+RUN chmod +x /app/start-backend.sh
+
+EXPOSE 4000
+
+CMD ["/app/start-backend.sh"]
