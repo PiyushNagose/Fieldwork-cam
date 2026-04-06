@@ -53,7 +53,7 @@ ChartJS.register(
   Filler,
 );
 
-const STATUS_FILTERS = ["ALL", "PAID", "PENDING", "PROCESSING", "OVERDUE"];
+const STATUS_FILTERS = ["ALL", "PAID", "APPROVED", "PENDING", "OVERDUE"];
 
 export default function VendorEarningsPage() {
   const { user } = useAuth();
@@ -154,8 +154,8 @@ export default function VendorEarningsPage() {
     const pendingInvoices = selectedYearInvoices.filter(
       (invoice) => invoice.displayStatus === "PENDING",
     );
-    const processingInvoices = selectedYearInvoices.filter(
-      (invoice) => invoice.displayStatus === "PROCESSING",
+    const approvedInvoices = selectedYearInvoices.filter(
+      (invoice) => invoice.displayStatus === "APPROVED",
     );
     const overdueInvoices = selectedYearInvoices.filter(
       (invoice) => invoice.displayStatus === "OVERDUE",
@@ -174,7 +174,7 @@ export default function VendorEarningsPage() {
         (sum, invoice) => sum + invoice.amountValue,
         0,
       ),
-      pendingPayments: pendingInvoices.reduce(
+      pendingPayments: [...pendingInvoices, ...approvedInvoices].reduce(
         (sum, invoice) => sum + invoice.amountValue,
         0,
       ),
@@ -184,7 +184,7 @@ export default function VendorEarningsPage() {
         0,
       ),
       pendingCount: pendingInvoices.length,
-      processingCount: processingInvoices.length,
+      approvedCount: approvedInvoices.length,
       overdueCount: overdueInvoices.length,
     };
   }, [selectedYearInvoices]);
@@ -223,7 +223,7 @@ export default function VendorEarningsPage() {
 
   const payoutSummary = useMemo(() => {
     const nextPayout = selectedYearInvoices
-      .filter((invoice) => invoice.displayStatus === "PROCESSING")
+      .filter((invoice) => invoice.displayStatus === "APPROVED")
       .reduce((sum, invoice) => sum + invoice.amountValue, 0);
     const lastPaidInvoice = [...selectedYearInvoices]
       .filter((invoice) => invoice.displayStatus === "PAID" && invoice.paymentDate)
@@ -247,8 +247,8 @@ export default function VendorEarningsPage() {
       PAID: selectedYearInvoices.filter((item) => item.displayStatus === "PAID").length,
       PENDING: selectedYearInvoices.filter((item) => item.displayStatus === "PENDING")
         .length,
-      PROCESSING: selectedYearInvoices.filter(
-        (item) => item.displayStatus === "PROCESSING",
+      APPROVED: selectedYearInvoices.filter(
+        (item) => item.displayStatus === "APPROVED",
       ).length,
       OVERDUE: selectedYearInvoices.filter((item) => item.displayStatus === "OVERDUE")
         .length,
@@ -518,10 +518,14 @@ export default function VendorEarningsPage() {
         />
         <EarningStatCard
           icon={<PaidOutlined sx={{ fontSize: 18 }} />}
-          label="Paid This Month"
-          value={formatCurrency(stats.paidThisMonth)}
+          label="Approved"
+          value={formatCurrency(
+            selectedYearInvoices
+              .filter((invoice) => invoice.displayStatus === "APPROVED")
+              .reduce((sum, invoice) => sum + invoice.amountValue, 0),
+          )}
           accent="#8B5CF6"
-          helper={`${stats.processingCount} processing`}
+          helper={`${stats.approvedCount} invoices`}
         />
         <EarningStatCard
           icon={<WarningAmberOutlined sx={{ fontSize: 18 }} />}
@@ -945,7 +949,7 @@ function statusChip(status) {
   const map = {
     PAID: { bg: "#EAFBF1", color: "#10B981", label: "Paid" },
     PENDING: { bg: "#FFF5DD", color: "#F59E0B", label: "Pending" },
-    PROCESSING: { bg: "#EEF2FF", color: "#6366F1", label: "Processing" },
+    APPROVED: { bg: "#EEF2FF", color: "#6366F1", label: "Approved" },
     OVERDUE: { bg: "#FEE2E2", color: "#EF4444", label: "Overdue" },
   };
   const current = map[status] || {
@@ -988,7 +992,7 @@ function enrichInvoice(invoice) {
   ) {
     displayStatus = "OVERDUE";
   } else if (normalizedStatus === "APPROVED") {
-    displayStatus = "PROCESSING";
+    displayStatus = "APPROVED";
   }
 
   return {
@@ -1106,7 +1110,7 @@ function calculateAveragePayoutDays(invoices) {
 
 function calculateNextPayoutDate(invoices) {
   const approvedInvoice = invoices
-    .filter((invoice) => invoice.displayStatus === "PROCESSING")
+    .filter((invoice) => invoice.displayStatus === "APPROVED")
     .sort(
       (a, b) =>
         new Date(a.createdAt || a.invoiceDate).getTime() -

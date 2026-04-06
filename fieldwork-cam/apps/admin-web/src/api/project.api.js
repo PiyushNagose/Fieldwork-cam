@@ -1,8 +1,32 @@
 import { apiClient } from "./client";
+import { resolveMediaUrl } from "../utils/mediaUrl";
+
+const normalizeProject = (project) => {
+  if (!project || typeof project !== "object") return project;
+
+  return {
+    ...project,
+    coverImageUrl: resolveMediaUrl(project.coverImageUrl || ""),
+  };
+};
 
 export const getProjectsApi = async (params = {}) => {
   const response = await apiClient.get("/projects", { params });
-  return response.data;
+  const payload = response.data;
+  const data = payload?.data || payload || [];
+
+  if (!Array.isArray(data)) return payload;
+
+  const normalized = data.map(normalizeProject);
+
+  if (Array.isArray(payload)) {
+    return normalized;
+  }
+
+  return {
+    ...payload,
+    data: normalized,
+  };
 };
 
 export const createProjectApi = async (payload) => {
@@ -12,7 +36,21 @@ export const createProjectApi = async (payload) => {
 
 export const getProjectByIdApi = async (projectId) => {
   const response = await apiClient.get(`/projects/${projectId}`);
-  return response.data;
+  const payload = response.data;
+  const data = payload?.data || payload || null;
+
+  if (!data || Array.isArray(data)) return payload;
+
+  const normalized = normalizeProject(data);
+
+  if (!payload?.data) {
+    return normalized;
+  }
+
+  return {
+    ...payload,
+    data: normalized,
+  };
 };
 
 export const updateProjectApi = async (projectId, payload) => {

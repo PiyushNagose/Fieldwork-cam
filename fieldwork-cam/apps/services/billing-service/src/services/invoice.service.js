@@ -150,7 +150,12 @@ const createInvoiceService = async (authUser, payload, authHeader) => {
     ).toFixed(2),
   );
 
-  const requestedStatus = String(payload.status || "PENDING").toUpperCase();
+  const requestedStatus = String(payload.status || "APPROVED").toUpperCase();
+  const effectiveStatus = isAdmin
+    ? requestedStatus
+    : isVendor
+      ? "APPROVED"
+      : "PENDING";
   const invoice = await createInvoice({
     invoiceNumber: payload.invoiceNumber,
     projectId: payload.projectId,
@@ -170,19 +175,21 @@ const createInvoiceService = async (authUser, payload, authHeader) => {
     totalDue,
     notes: payload.notes || "",
     paymentDate: payload.paymentDate || null,
-    status: isAdmin ? requestedStatus : "PENDING",
+    status: effectiveStatus,
     paymentTerms: payload.paymentTerms || "Net 14",
     signatureName: payload.signatureName || "",
   });
 
-  if ((invoice.status || "").toUpperCase() === "PAID") {
+  if (["APPROVED", "PAID"].includes((invoice.status || "").toUpperCase())) {
     await fetch(`${env.PROJECT_SERVICE_URL}/projects/${project.projectId || project._id || payload.projectId}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         authorization: authHeader || "",
       },
-      body: JSON.stringify({ status: "Completed" }),
+      body: JSON.stringify({
+        status: (invoice.status || "").toUpperCase() === "PAID" ? "Completed" : "Approved",
+      }),
     }).catch(() => null);
   }
 
