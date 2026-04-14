@@ -35,7 +35,7 @@ import { useAuth } from "../auth/AuthContext";
 import NotificationsPanel from "../components/NotificationsPanel";
 import { getUnreadNotificationsCountApi } from "../api/notification.api";
 
-const drawerWidth = 220;
+const drawerWidth = 214;
 
 const navItems = [
   { label: "Dashboard", to: "/admin/dashboard", icon: <DashboardOutlined /> },
@@ -109,18 +109,18 @@ export default function AdminLayout() {
             boxSizing: "border-box",
             borderRight: "1px solid #E9E1DB",
             bgcolor: "#FFFFFF",
-            p: 2,
+            p: 1.5,
           },
         }}
       >
-        <Box sx={{ px: 1, pt: 1, pb: 2 }}>
+        <Box sx={{ px: 1, pt: 0.75, pb: 1.5 }}>
           <Box
             component="img"
             src="/logo.png"
             alt="Logo"
-            sx={{ width: 115, objectFit: "contain", ml: 3 }}
-          />
-        </Box>
+          sx={{ width: 115, objectFit: "contain", ml: 3 }}
+        />
+      </Box>
 
         <List
           sx={{ p: 0, display: "flex", flexDirection: "column", gap: 0.75 }}
@@ -131,9 +131,9 @@ export default function AdminLayout() {
               component={NavLink}
               to={item.to}
               sx={{
-                borderRadius: 1,
-                px: 1.2,
-                py: 0.9,
+                borderRadius: 1.5,
+                px: 1.1,
+                py: 0.8,
                 color: "#6B7280",
                 transition: "all 0.2s ease",
                 "& .MuiListItemIcon-root": {
@@ -174,10 +174,10 @@ export default function AdminLayout() {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           sx={{
-            height: 64,
+            height: 60,
             bgcolor: "#FFFFFF",
             borderBottom: "1px solid #E9E1DB",
-            px: 2,
+            px: 1.75,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -194,9 +194,9 @@ export default function AdminLayout() {
             }
             sx={{
               width: 260,
-              height: 38,
+              height: 36,
               bgcolor: "#FFFFFF",
-              borderRadius: 1,
+              borderRadius: 1.5,
               fontSize: 13,
               color: "#374151",
               "& .MuiOutlinedInput-input": {
@@ -220,9 +220,9 @@ export default function AdminLayout() {
               onClick={() => setNotificationsOpen(true)}
               sx={{
                 width: 38,
-                height: 38,
+                height: 36,
                 border: "1px solid #E9E1DB",
-                borderRadius: 1,
+                borderRadius: 1.5,
                 bgcolor: "#FFFFFF",
                 color: "#6B7280",
                 "&:hover": {
@@ -248,9 +248,9 @@ export default function AdminLayout() {
               sx={{
                 cursor: "pointer",
                 border: "1px solid #E9E1DB",
-                borderRadius: 3,
-                px: 1.2,
-                py: 0.6,
+                borderRadius: 999,
+                px: 1.1,
+                py: 0.5,
                 bgcolor: "#FFFFFF",
                 transition: "all 0.2s ease",
                 "&:hover": {
@@ -294,7 +294,7 @@ export default function AdminLayout() {
                 sx: {
                   mt: 1,
                   minWidth: 160,
-                  borderRadius: 1,
+                  borderRadius: 1.5,
                   border: "1px solid #F0EBE6",
                   boxShadow: "0 8px 24px rgba(17, 24, 39, 0.06)",
                 },
@@ -337,7 +337,7 @@ export default function AdminLayout() {
           </Stack>
         </Box>
 
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 1.75 }}>
           <Outlet />
         </Box>
       </Box>

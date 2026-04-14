@@ -36,7 +36,7 @@ import { useAuth } from "../auth/AuthContext";
 import NotificationsPanel from "../components/NotificationsPanel";
 import { getUnreadNotificationsCountApi } from "../api/notification.api";
 
-const drawerWidth = 220;
+const drawerWidth = 214;
 
 const navItems = [
   { label: "Dashboard", to: "/vendor/dashboard", icon: <DashboardOutlined /> },
@@ -96,11 +96,11 @@ export default function VendorLayout() {
             width: drawerWidth,
             borderRight: "1px solid #E9E1DB",
             bgcolor: "#FFFFFF",
-            p: 2,
+            p: 1.5,
           },
         }}
       >
-        <Box sx={{ px: 1, pt: 1, pb: 2 }}>
+        <Box sx={{ px: 1, pt: 0.75, pb: 1.5 }}>
           <Box component="img" src="/logo.png" sx={{ width: 115, ml: 3 }} />
         </Box>
 
@@ -111,9 +111,9 @@ export default function VendorLayout() {
               component={NavLink}
               to={item.to}
               sx={{
-                borderRadius: 1,
-                px: 1.2,
-                py: 0.9,
+                borderRadius: 1.5,
+                px: 1.1,
+                py: 0.8,
                 color: "#6B7280",
                 transition: "all 0.2s ease",
                 "& .MuiListItemIcon-root": {
@@ -126,7 +126,7 @@ export default function VendorLayout() {
                 "&.active": {
                   bgcolor: "#E9CFC2",
                   color: "#1F2937",
-                  boxShadow: "0 8px 18px rgba(201, 180, 168, 0.22)",
+                  boxShadow: "0 6px 14px rgba(201, 180, 168, 0.16)",
                 },
               }}
             >
@@ -199,10 +199,10 @@ export default function VendorLayout() {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           sx={{
-            height: 64,
+            height: 60,
             bgcolor: "#FFFFFF",
             borderBottom: "1px solid #E9E1DB",
-            px: 2,
+            px: 1.75,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -243,9 +243,9 @@ export default function VendorLayout() {
               }
               sx={{
                 width: 260,
-                height: 38,
+                height: 36,
                 bgcolor: "#FFFFFF",
-                borderRadius: 1,
+                borderRadius: 1.5,
                 fontSize: 13,
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "#E9E1DB",
@@ -259,9 +259,10 @@ export default function VendorLayout() {
               alignItems="center"
               sx={{
                 height: 38,
-                px: 1.1,
+                height: 36,
+                px: 1,
                 border: "1px solid #E9E1DB",
-                borderRadius: 1,
+                borderRadius: 1.5,
                 bgcolor: "#FFFFFF",
                 color: "#6B7280",
               }}
@@ -276,9 +277,9 @@ export default function VendorLayout() {
               onClick={() => setNotificationsOpen(true)}
               sx={{
                 width: 38,
-                height: 38,
+                height: 36,
                 border: "1px solid #E9E1DB",
-                borderRadius: 1,
+                borderRadius: 1.5,
                 bgcolor: "#FFFFFF",
                 color: "#6B7280",
               }}
@@ -337,12 +338,12 @@ export default function VendorLayout() {
             onClose={() => setAnchorEl(null)}
             PaperProps={{
               sx: {
-                mt: 1,
-                minWidth: 160,
-                borderRadius: 1,
-                border: "1px solid #F0EBE6",
-              },
-            }}
+                  mt: 1,
+                  minWidth: 160,
+                  borderRadius: 1.5,
+                  border: "1px solid #F0EBE6",
+                },
+              }}
           >
             <MenuItem
               onClick={() => navigate("/vendor/profile")}
@@ -365,7 +366,7 @@ export default function VendorLayout() {
           </Menu>
         </Box>
 
-        <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 1.75 }}>
           <Outlet />
         </Box>
       </Box>

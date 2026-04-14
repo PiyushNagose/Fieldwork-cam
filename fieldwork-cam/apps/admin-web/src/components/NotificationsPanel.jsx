@@ -241,8 +241,8 @@ export default function NotificationsPanel({
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <Box
           sx={{
-            px: 2.2,
-            py: 2,
+            px: 2,
+            py: 1.75,
             bgcolor: "#D8C2B6",
             borderBottom: "1px solid #E9DDD5",
           }}
@@ -253,7 +253,7 @@ export default function NotificationsPanel({
                 sx={{
                   width: 42,
                   height: 42,
-                  borderRadius: "50%",
+                  borderRadius: 1.5,
                   bgcolor: "#F6E9E1",
                   display: "grid",
                   placeItems: "center",
@@ -346,7 +346,7 @@ export default function NotificationsPanel({
             sx={{
               mt: 1.4,
               height: 40,
-              borderRadius: 1,
+              borderRadius: 1.5,
               fontSize: 13,
               bgcolor: "#FFFFFF",
               "& .MuiOutlinedInput-notchedOutline": { borderColor: "#E8E1DA" },
@@ -373,7 +373,7 @@ export default function NotificationsPanel({
               sx={{
                 m: 1.5,
                 minHeight: 220,
-                borderRadius: 1,
+                borderRadius: 1.5,
                 border: "1px dashed #E5DED7",
                 display: "flex",
                 alignItems: "center",
@@ -432,8 +432,8 @@ function NotificationCard({ notification, onMarkRead, onPrimaryAction }) {
       sx={{
         position: "relative",
         px: 1.15,
-        py: 1.2,
-        borderRadius: 1,
+        py: 1.05,
+        borderRadius: 1.5,
         bgcolor: "#FFFFFF",
         borderBottom: "1px solid #F0EBE6",
         cursor: "pointer",
@@ -458,7 +458,7 @@ function NotificationCard({ notification, onMarkRead, onPrimaryAction }) {
           sx={{
             width: 40,
             height: 40,
-            borderRadius: "50%",
+            borderRadius: 1.5,
             bgcolor: iconConfig.bg,
             color: iconConfig.color,
             display: "grid",
@@ -515,7 +515,7 @@ function NotificationCard({ notification, onMarkRead, onPrimaryAction }) {
                 mt: 1.05,
                 minHeight: 28,
                 px: 1.35,
-                borderRadius: 1,
+                borderRadius: 1.2,
                 bgcolor: "#9D8A7D",
                 color: "#FFFFFF",
                 textTransform: "none",
@@ -544,7 +544,7 @@ function FilterChip({ label, active, onClick }) {
       sx={{
         minHeight: 30,
         px: 1.4,
-        borderRadius: 1,
+        borderRadius: 1.2,
         bgcolor: active ? "#9D8A7D" : "#F7F8FA",
         color: active ? "#FFFFFF" : "#4B5563",
         border: active ? "none" : "1px solid #ECEFF3",
@@ -633,7 +633,7 @@ function formatRelativeTime(value) {
 }
 
 const topActionButtonSx = {
-  borderRadius: 1,
+  borderRadius: 1.2,
   borderColor: "#E8DED8",
   color: "#4B5563",
   bgcolor: "#FFF8F4",

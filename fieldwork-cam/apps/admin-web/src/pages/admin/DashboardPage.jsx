@@ -461,15 +461,15 @@ export default function AdminDashboardPage() {
   return (
     <Box
       sx={{
-        px: { xs: 1.5, md: 2 },
-        py: { xs: 1.5, md: 2 },
+        px: { xs: 1.25, md: 1.75 },
+        py: { xs: 1.25, md: 1.75 },
         bgcolor: "#F8F5F2",
         minHeight: "100%",
       }}
     >
       <Typography
         sx={{
-          fontSize: 28,
+          fontSize: 26,
           fontWeight: 700,
           color: "#1F2937",
           lineHeight: 1.15,
@@ -483,7 +483,7 @@ export default function AdminDashboardPage() {
         sx={{
           mt: 0.5,
           color: "#9CA3AF",
-          fontSize: 13,
+          fontSize: 12.5,
           fontWeight: 500,
         }}
       >
@@ -492,14 +492,14 @@ export default function AdminDashboardPage() {
 
       <Box
         sx={{
-          mt: 2.2,
+          mt: 2,
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(2, 1fr)",
             lg: "repeat(4, 1fr)",
           },
-          gap: 1.5,
+          gap: 1.25,
         }}
       >
         {dashboard.cards.map((item) => (
@@ -509,10 +509,10 @@ export default function AdminDashboardPage() {
 
       <Box
         sx={{
-          mt: 1.5,
+          mt: 1.25,
           display: "grid",
           gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" },
-          gap: 1.5,
+          gap: 1.25,
         }}
       >
         <CardPanel title="Earnings Analytics" subtitle="Revenue vs outstanding over time">
@@ -544,10 +544,10 @@ export default function AdminDashboardPage() {
 
       <Box
         sx={{
-          mt: 1.5,
+          mt: 1.25,
           display: "grid",
           gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" },
-          gap: 1.5,
+          gap: 1.25,
         }}
       >
         <CardPanel title="Recent Activity" actionLabel="View All">
@@ -606,12 +606,12 @@ function SummaryCard({ item }) {
   return (
     <Card
       sx={{
-        p: 2,
-        borderRadius: 1,
+        p: 1.75,
+        borderRadius: 1.5,
         border: "1px solid #E9E1DB",
         position: "relative",
         overflow: "hidden",
-        boxShadow: "none",
+        boxShadow: "0 6px 18px rgba(31,41,55,0.03)",
         bgcolor: "#FFFFFF",
       }}
     >
@@ -620,8 +620,8 @@ function SummaryCard({ item }) {
           position: "absolute",
           right: -6,
           top: -10,
-          width: 56,
-          height: 56,
+          width: 50,
+          height: 50,
           borderRadius: "50%",
           bgcolor: "#F2EEEA",
           opacity: 0.95,
@@ -636,7 +636,7 @@ function SummaryCard({ item }) {
           sx={{
             width: 28,
             height: 28,
-            borderRadius: "50%",
+            borderRadius: 1.2,
             bgcolor: `${item.accent}14`,
             color: item.accent,
             display: "grid",
@@ -651,7 +651,7 @@ function SummaryCard({ item }) {
       <Typography
         sx={{
           mt: 0.7,
-          fontSize: 22,
+          fontSize: 20,
           fontWeight: 700,
           color: "#1F2937",
           lineHeight: 1.1,
@@ -677,10 +677,10 @@ function CardPanel({ title, subtitle, actionLabel, children }) {
   return (
     <Card
       sx={{
-        p: 2,
-        borderRadius: 1,
+        p: 1.75,
+        borderRadius: 1.5,
         border: "1px solid #E9E1DB",
-        boxShadow: "none",
+        boxShadow: "0 6px 18px rgba(31,41,55,0.03)",
         bgcolor: "#FFFFFF",
       }}
     >
@@ -704,9 +704,9 @@ function CardPanel({ title, subtitle, actionLabel, children }) {
             sx={{
               color: "#8B8B8B",
               bgcolor: "#F8F3EF",
-              px: 1.4,
-              minHeight: 30,
-              borderRadius: 1,
+              px: 1.25,
+              minHeight: 28,
+              borderRadius: 1.2,
               textTransform: "none",
               fontSize: 11.5,
               fontWeight: 600,
@@ -731,8 +731,8 @@ function ActivityRow({ item }) {
       <Stack direction="row" spacing={1} sx={{ minWidth: 0 }}>
         <Box
           sx={{
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             borderRadius: "50%",
             bgcolor: visual.bg,
             color: visual.color,
@@ -750,7 +750,7 @@ function ActivityRow({ item }) {
           <Typography
             sx={{
               mt: 0.25,
-              fontSize: 12,
+              fontSize: 11.5,
               color: "#9CA3AF",
               lineHeight: 1.35,
             }}
@@ -762,7 +762,7 @@ function ActivityRow({ item }) {
 
       <Typography
         sx={{
-          fontSize: 11,
+          fontSize: 10.5,
           color: "#B0B5BE",
           whiteSpace: "nowrap",
           flexShrink: 0,
@@ -783,12 +783,13 @@ function SubmissionRow({ item }) {
         gap: 1,
         alignItems: "center",
         py: 0.65,
+        borderBottom: "1px solid rgba(233,225,219,0.55)",
       }}
     >
       <Box sx={{ minWidth: 0 }}>
         <Typography
           sx={{
-            fontSize: 13,
+            fontSize: 12.5,
             fontWeight: 700,
             color: "#1F2937",
             lineHeight: 1.25,
@@ -816,7 +817,7 @@ function SubmissionRow({ item }) {
           minWidth: 0,
           width: 28,
           height: 28,
-          borderRadius: 1,
+          borderRadius: 1.2,
           p: 0,
           color: "#A4ABB5",
         }}
@@ -832,7 +833,7 @@ function EmptyChartBox({ label }) {
     <Box
       sx={{
         height: "100%",
-        borderRadius: 1,
+        borderRadius: 1.3,
         border: "1px dashed #E5DED7",
         display: "flex",
         alignItems: "center",
@@ -852,7 +853,7 @@ function EmptyListBox({ label }) {
     <Box
       sx={{
         minHeight: 180,
-        borderRadius: 1,
+        borderRadius: 1.3,
         border: "1px dashed #E5DED7",
         display: "flex",
         alignItems: "center",

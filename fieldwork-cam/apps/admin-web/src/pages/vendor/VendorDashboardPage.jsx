@@ -250,15 +250,15 @@ export default function VendorDashboardPage() {
   return (
     <Box
       sx={{
-        px: { xs: 1.5, md: 2 },
-        py: { xs: 1.5, md: 2 },
+        px: { xs: 1.25, md: 1.75 },
+        py: { xs: 1.25, md: 1.75 },
         bgcolor: "#F8F5F2",
         minHeight: "100%",
       }}
     >
       <Typography
         sx={{
-          fontSize: 28,
+          fontSize: 26,
           fontWeight: 700,
           color: "#1F2937",
           lineHeight: 1.15,
@@ -272,7 +272,7 @@ export default function VendorDashboardPage() {
         sx={{
           mt: 0.5,
           color: "#9CA3AF",
-          fontSize: 13,
+          fontSize: 12.5,
           fontWeight: 500,
         }}
       >
@@ -287,10 +287,10 @@ export default function VendorDashboardPage() {
 
       <Box
         sx={{
-          mt: 2.1,
+          mt: 1.9,
           display: "grid",
           gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-          gap: 1.5,
+          gap: 1.25,
         }}
       >
         {cards.map((item) => (
@@ -300,11 +300,11 @@ export default function VendorDashboardPage() {
 
       <Card
         sx={{
-          mt: 1.5,
-          p: 2,
-          borderRadius: 1,
+          mt: 1.25,
+          p: 1.75,
+          borderRadius: 1.5,
           border: "1px solid #E9E1DB",
-          boxShadow: "none",
+          boxShadow: "0 6px 18px rgba(31,41,55,0.03)",
           bgcolor: "#FFFFFF",
         }}
       >
@@ -328,11 +328,11 @@ export default function VendorDashboardPage() {
 
       <Card
         sx={{
-          mt: 1.5,
-          p: 2,
-          borderRadius: 1,
+          mt: 1.25,
+          p: 1.75,
+          borderRadius: 1.5,
           border: "1px solid #E9E1DB",
-          boxShadow: "none",
+          boxShadow: "0 6px 18px rgba(31,41,55,0.03)",
           bgcolor: "#FFFFFF",
         }}
       >
@@ -378,10 +378,10 @@ function DashboardMetricCard({ item }) {
   return (
     <Card
       sx={{
-        p: 2,
-        borderRadius: 1,
+        p: 1.75,
+        borderRadius: 1.5,
         border: "1px solid #E9E1DB",
-        boxShadow: "none",
+        boxShadow: "0 6px 18px rgba(31,41,55,0.03)",
         bgcolor: "#FFFFFF",
         position: "relative",
         overflow: "hidden",
@@ -392,8 +392,8 @@ function DashboardMetricCard({ item }) {
           position: "absolute",
           right: 16,
           bottom: -18,
-          width: 92,
-          height: 92,
+          width: 82,
+          height: 82,
           borderRadius: "50%",
           bgcolor: `${item.accent}12`,
         }}
@@ -404,7 +404,7 @@ function DashboardMetricCard({ item }) {
           sx={{
             width: 34,
             height: 34,
-            borderRadius: 1,
+            borderRadius: 1.2,
             bgcolor: item.accent,
             color: "#FFFFFF",
             display: "grid",
@@ -422,7 +422,7 @@ function DashboardMetricCard({ item }) {
       <Typography
         sx={{
           mt: 2,
-          fontSize: 33,
+          fontSize: 30,
           fontWeight: 700,
           color: "#1F2937",
           lineHeight: 1.05,
@@ -449,6 +449,7 @@ function RecentProjectRow({ project }) {
       spacing={2}
       sx={{
         py: 0.7,
+        borderBottom: "1px solid rgba(233,225,219,0.55)",
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -464,7 +465,7 @@ function RecentProjectRow({ project }) {
         <Typography
           sx={{
             mt: 0.45,
-            fontSize: 13.5,
+            fontSize: 13,
             fontWeight: 700,
             color: "#1F2937",
             lineHeight: 1.25,
