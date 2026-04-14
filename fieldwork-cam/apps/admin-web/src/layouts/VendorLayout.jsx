@@ -104,7 +104,7 @@ export default function VendorLayout() {
           <Box component="img" src="/logo.png" sx={{ width: 115, ml: 3 }} />
         </Box>
 
-        <List sx={{ display: "flex", flexDirection: "column", gap: 0.75, flex: 1 }}>
+        <List sx={{ p: 0, display: "flex", flexDirection: "column", gap: 0.75, flex: 1 }}>
           {navItems.map((item) => (
             <ListItemButton
               key={item.to}
@@ -144,6 +144,7 @@ export default function VendorLayout() {
                 primaryTypographyProps={{
                   fontSize: 13,
                   fontWeight: 600,
+                  lineHeight: 1.2,
                 }}
               />
             </ListItemButton>
@@ -258,7 +259,6 @@ export default function VendorLayout() {
               spacing={0.75}
               alignItems="center"
               sx={{
-                height: 38,
                 height: 36,
                 px: 1,
                 border: "1px solid #E9E1DB",
@@ -338,12 +338,12 @@ export default function VendorLayout() {
             onClose={() => setAnchorEl(null)}
             PaperProps={{
               sx: {
-                  mt: 1,
-                  minWidth: 160,
-                  borderRadius: 1.5,
-                  border: "1px solid #F0EBE6",
-                },
-              }}
+                mt: 1,
+                minWidth: 160,
+                borderRadius: 1.5,
+                border: "1px solid #F0EBE6",
+              },
+            }}
           >
             <MenuItem
               onClick={() => navigate("/vendor/profile")}
