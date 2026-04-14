@@ -104,52 +104,54 @@ export default function VendorLayout() {
           <Box component="img" src="/logo.png" sx={{ width: 115, ml: 3 }} />
         </Box>
 
-        <List sx={{ p: 0, display: "flex", flexDirection: "column", gap: 0.75, flex: 1 }}>
-          {navItems.map((item) => (
-            <ListItemButton
-              key={item.to}
-              component={NavLink}
-              to={item.to}
-              sx={{
-                borderRadius: 1.5,
-                px: 1.1,
-                py: 0.8,
-                color: "#6B7280",
-                transition: "all 0.2s ease",
-                "& .MuiListItemIcon-root": {
-                  color: "inherit",
-                },
-                "&:hover": {
-                  bgcolor: "#F6F1EC",
-                  color: "#1F2937",
-                },
-                "&.active": {
-                  bgcolor: "#E9CFC2",
-                  color: "#1F2937",
-                  boxShadow: "0 6px 14px rgba(201, 180, 168, 0.16)",
-                },
-              }}
-            >
-              <ListItemIcon
+        <Box sx={{ flex: 1 }}>
+          <List sx={{ p: 0, display: "flex", flexDirection: "column", gap: 0.75 }}>
+            {navItems.map((item) => (
+              <ListItemButton
+                key={item.to}
+                component={NavLink}
+                to={item.to}
                 sx={{
-                  minWidth: 32,
-                  color: "inherit",
+                  borderRadius: 1.5,
+                  px: 1.1,
+                  py: 0.8,
+                  color: "#6B7280",
+                  transition: "all 0.2s ease",
+                  "& .MuiListItemIcon-root": {
+                    color: "inherit",
+                  },
+                  "&:hover": {
+                    bgcolor: "#F6F1EC",
+                    color: "#1F2937",
+                  },
+                  "&.active": {
+                    bgcolor: "#E9CFC2",
+                    color: "#1F2937",
+                    boxShadow: "0 6px 14px rgba(201, 180, 168, 0.16)",
+                  },
                 }}
               >
-                {item.icon}
-              </ListItemIcon>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 32,
+                    color: "inherit",
+                  }}
+                >
+                  {item.icon}
+                </ListItemIcon>
 
-              <ListItemText
-                primary={item.label}
-                primaryTypographyProps={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  lineHeight: 1.2,
-                }}
-              />
-            </ListItemButton>
-          ))}
-        </List>
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    lineHeight: 1.2,
+                  }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        </Box>
 
         <Box
           sx={{
